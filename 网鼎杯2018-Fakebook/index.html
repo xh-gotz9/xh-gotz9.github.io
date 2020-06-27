@@ -20,28 +20,34 @@
     var CONFIG = {"hostname":"xh-gotz9.github.io","root":"/","scheme":"Mist","version":"8.0.0-rc.3","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
   </script>
 
-  <meta property="og:type" content="website">
-<meta property="og:title" content="Log Horizon">
-<meta property="og:url" content="https://xh-gotz9.github.io/index.html">
+  <meta name="description" content="网鼎杯 2018 - FakeBook网鼎杯2018的题, 还算简单, 可惜自己不带脑子. 离熟练解题还有很长的距离, 感觉主要是没有给自己定一个的测试流程, 经常想到哪做到哪, 脑子一短路就卡壳.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="网鼎杯2018 - Fakebook">
+<meta property="og:url" content="https://xh-gotz9.github.io/%E7%BD%91%E9%BC%8E%E6%9D%AF2018-Fakebook/index.html">
 <meta property="og:site_name" content="Log Horizon">
+<meta property="og:description" content="网鼎杯 2018 - FakeBook网鼎杯2018的题, 还算简单, 可惜自己不带脑子. 离熟练解题还有很长的距离, 感觉主要是没有给自己定一个的测试流程, 经常想到哪做到哪, 脑子一短路就卡壳.">
 <meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-06-25T18:08:20.000Z">
+<meta property="article:modified_time" content="2020-06-27T05:51:21.813Z">
 <meta property="article:author" content="gotz9">
+<meta property="article:tag" content="writeup">
+<meta property="article:tag" content="SQLI">
 <meta name="twitter:card" content="summary">
 
-<link rel="canonical" href="https://xh-gotz9.github.io/">
+<link rel="canonical" href="https://xh-gotz9.github.io/%E7%BD%91%E9%BC%8E%E6%9D%AF2018-Fakebook/">
 
 
 <script id="page-configurations">
   // https://hexo.io/docs/variables.html
   CONFIG.page = {
     sidebar: "",
-    isHome : true,
-    isPost : false,
+    isHome : false,
+    isPost : true,
     lang   : 'zh-CN'
   };
 </script>
 
-  <title>Log Horizon</title>
+  <title>网鼎杯2018 - Fakebook | Log Horizon</title>
   
 
 
@@ -121,89 +127,10 @@
         <div class="content-wrap">
           
 
-          <div class="content index posts-expand">
+          <div class="content post posts-expand">
             
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://xh-gotz9.github.io/%E7%BD%91%E9%BC%8E%E6%9D%AF2020%E9%9D%92%E9%BE%99%E7%BB%84-AreUSerialz/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="gotz9">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Log Horizon">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/%E7%BD%91%E9%BC%8E%E6%9D%AF2020%E9%9D%92%E9%BE%99%E7%BB%84-AreUSerialz/" class="post-title-link" itemprop="url">网鼎杯2020 青龙组 - AreUSerialz</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2020-06-27 13:22:42 / 修改时间：13:54:16" itemprop="dateCreated datePublished" datetime="2020-06-27T13:22:42+08:00">2020-06-27</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/CTF/" itemprop="url" rel="index"><span itemprop="name">CTF</span></a>
-                </span>
-                  ，
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/CTF/BUUCTF/" itemprop="url" rel="index"><span itemprop="name">BUUCTF</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
 
     
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>题目挺直白, 直接给源码.</p>
-<p>从题解来看是要考察 PHP 反序列化中字符串的另一种 format, 网上查了好久都找不到相关描述… 可能这个特性太冷门了没多少人关注吧.</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/%E7%BD%91%E9%BC%8E%E6%9D%AF2020%E9%9D%92%E9%BE%99%E7%BB%84-AreUSerialz/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
@@ -219,10 +146,9 @@
       <meta itemprop="name" content="Log Horizon">
     </span>
       <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/%E7%BD%91%E9%BC%8E%E6%9D%AF2018-Fakebook/" class="post-title-link" itemprop="url">网鼎杯2018 - Fakebook</a>
-        </h2>
+        <h1 class="post-title" itemprop="name headline">
+          网鼎杯2018 - Fakebook
+        </h1>
 
         <div class="post-meta">
             <span class="post-meta-item">
@@ -265,31 +191,56 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <h1 id="网鼎杯-2018-FakeBook"><a href="#网鼎杯-2018-FakeBook" class="headerlink" title="网鼎杯 2018 - FakeBook"></a>网鼎杯 2018 - FakeBook</h1><p>网鼎杯2018的题, 还算简单, 可惜自己不带脑子.</p>
+        <h1 id="网鼎杯-2018-FakeBook"><a href="#网鼎杯-2018-FakeBook" class="headerlink" title="网鼎杯 2018 - FakeBook"></a>网鼎杯 2018 - FakeBook</h1><p>网鼎杯2018的题, 还算简单, 可惜自己不带脑子.</p>
 <p>离熟练解题还有很长的距离, 感觉主要是没有给自己定一个的测试流程, 经常想到哪做到哪, 脑子一短路就卡壳.</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/%E7%BD%91%E9%BC%8E%E6%9D%AF2018-Fakebook/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
+<a id="more"></a>
+<h2 id="发现-SQL-注入"><a href="#发现-SQL-注入" class="headerlink" title="发现 SQL 注入"></a>发现 SQL 注入</h2><p>登陆/注册页面简单看了下, 应该不是拿admin, 正常注册使用.</p>
+<p>从登陆后首页跳转到 <code>/view.php?no=1</code>. payload <code>?no=0</code>, 页面出现报错.</p>
+<p>进一步尝试注入扫库, 成功, 仅 <code>union select</code> 貌似被检测了, 用 <code>/**/</code> 代替空格绕过.<br>库中仅有 <code>users</code> 表, 字段: <code>no,username,passwd,data,USER,CURRENT_CONNECTIONS,TOTAL_CONNECTIONS</code>, 数据仅有刚注册的用户, 没有其他信息. 看来不是单纯脱裤能解决的.</p>
+<p>查看 data 字段, 是 PHP 的序列化数据, 可以解释访问 <code>?no=0</code> 时开头出现的调用 <code>unserialize</code> 反序列化报错, 以及显示位置出现调用方法报错的原因. data列的数据:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">O:8:&quot;UserInfo&quot;:3:&#123;s:4:&quot;name&quot;;s:3:&quot;a22&quot;;s:3:&quot;age&quot;;i:11;s:4:&quot;blog&quot;;s:9:&quot;baidu.com&quot;;&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="目录扫描-amp-代码审计"><a href="#目录扫描-amp-代码审计" class="headerlink" title="目录扫描 &amp; 代码审计"></a>目录扫描 &amp; 代码审计</h2><p>到这里看到可能是要利用反序列化, 但是有点没头绪, 查了 writeup 找提示, 发现提到扫目录, 想起了网站常用的 <code>robots.txt</code> 文件, 访问成功, 而且记录了一个路径 <code>/user.php.bak</code>. 打开, 是 PHP 源码, 进行代码审计.</p>
+<p>代码是数据库序列化存储的 <code>UserInfo</code> 类的定义文件, <code>isValidBlog</code> 会对注册提交的连接进行检测, 根据 PHP 报错信息, <code>getBlogContents</code> 会在 <code>view.php</code> 中调用, 它会调用 <code>get</code> 方法利用 <code>curl_exec</code> 函数获取 <code>blog</code> 属性指定的 url 的内容.</p>
+<h2 id="curl-exec-漏洞"><a href="#curl-exec-漏洞" class="headerlink" title="curl_exec 漏洞"></a>curl_exec 漏洞</h2><p>对 PHP 的 curl 功能一无所知… 接下来就是学习时间了</p>
+<p>首先是查到 <a href="https://www.jianshu.com/p/c60aeca68e03" target="_blank" rel="noopener"><code>curl_exec 任意文件读取</code></a>, 利用 <code>file://</code> 协议头可以忽略 host 部分, 直接读取 uri 部分指定的文件. 例如 <code>file://192.168.0.11/etc/passwd</code>, 会直接读取 <code>/etc/passwd</code> 文件.</p>
+<p>进行尝试, 假定 <code>isValidBlog</code> 仅会在注入时调用, 从 <code>view.php</code> 的 SQL 注入点注入一个序列化的 <code>UserInfo</code> 对象则可以绕过. 用之前序列化数据检测回显列, 发现序列化数据在第4列.</p>
+<p>构建 payload:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">?no&#x3D;2 AND 0 UNION&#x2F;**&#x2F;SELECT 1,group_concat(data),3,&#39;O:8:&quot;UserInfo&quot;:3:&#123;s:4:&quot;name&quot;;s:3:&quot;a22&quot;;s:3:&quot;age&quot;;i:11;s:4:&quot;blog&quot;;s:12:&quot;file:&#x2F;&#x2F;&#x2F;flag&quot;;&#125;&#39; FROM users-- -</span><br></pre></td></tr></table></figure>
+
+<p>emmm 读不到数据, 测试读取 <code>/var/www/html/view.php.bak</code> 是成功了的… 尴尬了, 测了 <code>/flag</code>, <code>/tmp/flag</code>, <code>./flag</code>, 都没有. 查 writeup 看看师傅们怎么做的吧… 得, 都是扫出来的, flag 文件是 网站目录下的 <code>flag.php</code>, 即 <code>/var/www/html/flag.php</code>, 以此构建 payload:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">?no&#x3D;2 AND 0 UNION&#x2F;**&#x2F;SELECT 1,group_concat(data),3,&#39;O:8:&quot;UserInfo&quot;:3:&#123;s:4:&quot;name&quot;;s:3:&quot;a22&quot;;s:3:&quot;age&quot;;i:11;s:4:&quot;blog&quot;;s:29:&quot;file:&#x2F;&#x2F;&#x2F;var&#x2F;www&#x2F;html&#x2F;flag.php&quot;;&#125;&#39; FROM users-- -</span><br></pre></td></tr></table></figure>
+
+<p>在 <code>view.php</code> 页面中成功拿到 flag. 顺便在 <code>robots.txt</code>  之外我也跑了一次 dirsearch, 没扫出来. 需要更新一下字典或者再找几个扫描工具了.</p>
+
     </div>
 
     
     
     
+
       <footer class="post-footer">
-        <div class="post-eof"></div>
+          <div class="post-tags">
+              <a href="/tags/writeup/" rel="tag"># writeup</a>
+              <a href="/tags/SQLI/" rel="tag"># SQLI</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/%E7%BD%91%E9%BC%8E%E6%9D%AF2020%E9%9D%92%E9%BE%99%E7%BB%84-AreUSerialz/" rel="next" title="网鼎杯2020 青龙组 - AreUSerialz">
+      网鼎杯2020 青龙组 - AreUSerialz <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
       </footer>
+    
   </article>
   
   
-  
-
-
   
 
 
@@ -342,6 +293,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#网鼎杯-2018-FakeBook"><span class="nav-number">1.</span> <span class="nav-text">网鼎杯 2018 - FakeBook</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#发现-SQL-注入"><span class="nav-number">1.1.</span> <span class="nav-text">发现 SQL 注入</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#目录扫描-amp-代码审计"><span class="nav-number">1.2.</span> <span class="nav-text">目录扫描 &amp; 代码审计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#curl-exec-漏洞"><span class="nav-number">1.3.</span> <span class="nav-text">curl_exec 漏洞</span></a></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
