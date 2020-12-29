@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.2.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.1/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"xh-gotz9.github.io","root":"/","images":"/images","scheme":"Mist","version":"8.1.0","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"}};
+  </script>
+<meta name="description" content="最近用 Java 写了一个简单的 Redis 存取工具, 涉及到了数据的二进制序列化, 记录一下发现的问题和一些思考.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="关于 binary 序列化">
+<meta property="og:url" content="https://xh-gotz9.github.io/about-java-binary-serialize/index.html">
+<meta property="og:site_name" content="Log Horizon">
+<meta property="og:description" content="最近用 Java 写了一个简单的 Redis 存取工具, 涉及到了数据的二进制序列化, 记录一下发现的问题和一些思考.">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-12-29T04:42:16.000Z">
+<meta property="article:modified_time" content="2020-12-29T09:40:15.044Z">
+<meta property="article:author" content="gotz9">
+<meta property="article:tag" content="Java">
+<meta property="article:tag" content="序列化">
+<meta property="article:tag" content="protobuf">
+<meta property="article:tag" content="Kryo">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://xh-gotz9.github.io/about-java-binary-serialize/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+<title>关于 binary 序列化 | Log Horizon</title>
+  
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">Log Horizon</h1>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <section class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BA%8F%E5%88%97%E5%8C%96%E4%B8%8D%E9%87%8D%E8%A6%81-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%89%8D%E6%98%AF%E5%85%B3%E9%94%AE"><span class="nav-number">1.</span> <span class="nav-text">序列化不重要, 反序列化才是关键</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%BC%E5%AE%B9%E6%80%A7"><span class="nav-number">2.</span> <span class="nav-text">兼容性</span></a></li></ol></div>
+        </section>
+        <!--/noindex-->
+
+        <section class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">gotz9</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">7</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-name">分类</span>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">标签</span>
+      </div>
+  </nav>
+</div>
+
+
+
+        </section>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://xh-gotz9.github.io/about-java-binary-serialize/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="gotz9">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Log Horizon">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          关于 binary 序列化
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2020-12-29 12:42:16 / 修改时间：17:40:15" itemprop="dateCreated datePublished" datetime="2020-12-29T12:42:16+08:00">2020-12-29</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E5%BC%80%E5%8F%91/" itemprop="url" rel="index"><span itemprop="name">开发</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <p>最近用 Java 写了一个简单的 Redis 存取工具, 涉及到了数据的二进制序列化, 记录一下发现的问题和一些思考.</p>
+<a id="more"></a>
+
+<h2 id="序列化不重要-反序列化才是关键"><a href="#序列化不重要-反序列化才是关键" class="headerlink" title="序列化不重要, 反序列化才是关键"></a>序列化不重要, 反序列化才是关键</h2><p>一开始直接写的序列化部分, 觉得很简单. 想着直接将对象按基础数据类型满满地填进去就完事, 最多就在一些非固定长度数据的前面加个长度字段.</p>
+<p>但是到反序列化, 就会出现很多问题. 首先是类型的问题, 数据写得非常紧凑, 但是里面没有类型信息, 反序列化时无法准确获取类型. 其次不具有泛用性, 每个类型的序列化都要单独实现序列化方法. 并且在使用时还要考虑到外部的错误调用等情况, 序列化方法的实现会写得畏手畏脚.</p>
+<p>为了泛用性, 考虑使用反射. 反射很方便, 可以获取每个 field. 若提供定制注解, 根据 field 上注解的配置可以定制其序列化行为. 反射序列化通常只需将基础类型, 集合, 数组, 字符串做相应的处理即可, 其他对象最终皆可拆分为基础类型的组合. 当然, 若要严谨, 要还有别的要做. 例如注解类型以及其他一些特殊类型的处理.</p>
+<p>当然如果仅仅将反射获得的基本数据按格式排列, 还是会缺少类型信息. 此处参考了 Kryo 框架, Kryo 使用了一个前缀标识字段, 大概结构是 <code>&lt;id&gt; [+ &lt;class name&gt;]</code>. id 对应了 Kryo 对象中存储的 id =&gt; class 映射的 id, 它将 Java 的一些基本类型, 常用类型都默认添加到了这个映射中. 如果需要序列化的类型不在其映射中, 那么会采用备用的 NAME 方案, 即直接将类名写入输出数据中. 反序列化时可以通过 <code>Class.forName</code> 获取相应的 class.</p>
+<blockquote>
+<p>扯点题外话, 用 class 名信息来做反序列化可能会被攻击…</p>
+</blockquote>
+<h2 id="兼容性"><a href="#兼容性" class="headerlink" title="兼容性"></a>兼容性</h2><blockquote>
+<p>兼容性, 万金油的办法是版本号管理, 通过版本号匹配对应的序列化方法. 但是每次改动, 代码量可见地涨, 开发效率低且不易管理, 一旦改动频繁, 更加难受. 此处主要考虑反射序列化的兼容.</p>
+</blockquote>
+<p>因为反射序列化依赖固定的类的结构, 倘若结构变化, 显然 (大部分情况下) 无法反序列化成功. 当对象数据被序列化存储后, 其类结构发生变化. 如果编码中注意到这点, 可以做一些数据缺失的兼容处理, 但没办法解决类型变化带来的麻烦.</p>
+<p>首先, 结构变化有两种情况: 顺序变化, 命名变化, 类型变化. </p>
+<p>顺序变化, 指声明顺序变化. 如果声明顺序变化, 会影响到反射代码取 Field 结果的排序, 这也会导致数据写入和读取时的顺序. 毕竟就算用 Field.name 排序, 也会存在插队现象. 做成 map 映射是个人看来比较好的选择, 那拿什么做成 map 映射就是关键了. 通常会考虑用 Field.name 做 map 的 key, 首先不重复, 其次便于查找. 可以参考 JSON 序列化, JSON 序列化其实就是将 object 当作 map. 其内的 key 与 Java 类的 Field 一一对应, 值也一一对应.</p>
+<p>命名变化, 应对的办法也比较简单, 在上一步的基础上将 key 映射到 Field 的某个不易变的属性上, 不去依赖代码中易变的 Field.name 即可. 可以想到的方式是为 Filed 添加注解, 在注解中为 Field 写入序列化映射 key 的元信息. 这样一来, 因为 Field.name 变动导致的反序列化失败就会少很多了.</p>
+<p>最后的问题是类型变化. 这个基本无解. 如果要做原类型转换, 又要新增代码逻辑, 随着版本迭代, 一坨又一坨, 要兼容的老版本越多, 代码越多, 全都还不好复用, 地狱啊.</p>
+<p>参考一下 protobuf 的设计, protobuf 的定义中会为协议结构体指定一个值, 例如:</p>
+<figure class="highlight protobuf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">message</span> <span class="title">SearchRequest</span> </span>&#123;</span><br><span class="line">  <span class="built_in">string</span> query = <span class="number">1</span>;</span><br><span class="line">  <span class="built_in">int32</span> page_number = <span class="number">2</span>;</span><br><span class="line">  <span class="built_in">int32</span> result_per_page = <span class="number">3</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>其实这与上面命名变化所想大致无差别, 前面只是个名字, 真正作为 field key 的是后面的数字. 协议升级, 只能在后面添加新的 field key, 而不会改变前面的部分, 以保持与不同版本代码的协议兼容性. 所以若要做成类似 protobuf 的形式, 需要通过注解指定一个不重复的 field key.</p>
+<p>使用 protobuf 要在 Java 中引入新的协议代码, 原有的数据对象需要进行转换才可序列化. 要是利用反射序列化来做, 也许有一定用处.</p>
+<p>最终用法大概如下:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// version 1</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Foo</span> </span>&#123;</span><br><span class="line">    <span class="meta">@SerializeField(id = 1)</span></span><br><span class="line">    <span class="keyword">int</span> bar;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// version 2</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Foo</span> </span>&#123;</span><br><span class="line">    <span class="meta">@SerializeField(id = 2)</span></span><br><span class="line">    String bar;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Java/" rel="tag"># Java</a>
+              <a href="/tags/%E5%BA%8F%E5%88%97%E5%8C%96/" rel="tag"># 序列化</a>
+              <a href="/tags/protobuf/" rel="tag"># protobuf</a>
+              <a href="/tags/Kryo/" rel="tag"># Kryo</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/rust-smart-pointers/" rel="prev" title="Rust - 智能指针">
+                  <i class="fa fa-chevron-left"></i> Rust - 智能指针
+                </a>
+            </div>
+            <div class="post-nav-item">
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">gotz9</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/mist/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/schemes/muse.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+</body>
+</html>
