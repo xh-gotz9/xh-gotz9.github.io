@@ -1,0 +1,219 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  
+  <title>Java GC Safe Point | Log Horizon</title>
+  <meta name="author" content="gotz9">
+  
+  <meta name="description" content="GC 安全点 Safepoint 相关的概念可以参考 OpenJDK 文档 的 VM Operations and Safepoints 章节. 本篇只是进行了一些蹩脚的翻译工作, 并做了一些个人笔记.
+2021 更新: 从以前的 github 账号仓库里将这篇 2018 年的笔记翻了出来, 改了一下准备放到新账号的网页上.">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Java GC Safe Point"/>
+  <meta property="og:site_name" content="Log Horizon"/>
+
+  
+    <meta property="og:image" content=""/>
+  
+
+  <link rel="shortcut icon" href="/favicon.png">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  <!--[if lt IE 9]><script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script><![endif]-->
+  
+
+<meta name="generator" content="Hexo 5.2.0"></head>
+
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Log Horizon</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div>
+</header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article id="post-java-gc-safe-point" class="h-entry post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time class="dt-published" datetime="2021-06-22T14:36:47.000Z"><a href="/java-gc-safe-point/">2021-06-22</a></time>
+      
+      
+  
+    <h1 class="p-name title" itemprop="headline name">Java GC Safe Point</h1>
+  
+
+    </header>
+    <div class="e-content entry" itemprop="articleBody">
+      
+        <p>GC 安全点 Safepoint 相关的概念可以参考 <a target="_blank" rel="noopener" href="http://openjdk.java.net/groups/hotspot/docs/RuntimeOverview.html">OpenJDK 文档</a> 的 <code>VM Operations and Safepoints</code> 章节. 本篇只是进行了一些蹩脚的翻译工作, 并做了一些个人笔记.</p>
+<p>2021 更新: 从以前的 github 账号仓库里将这篇 2018 年的笔记翻了出来, 改了一下准备放到新账号的网页上.</p>
+<a id="more"></a>
+
+<p>为便于专有名词辨认, 将保留部分英文原名或标志名.</p>
+<p>The VMThread spends its time waiting for operations to appear in the VMOperationQueue, and then executing those operations. Typically these operations are passed on to the VMThread because they require that the VM reach a safepoint before they can be executed. In simple terms, when the VM is at safepoint all threads inside the VM have been blocked, and any threads executing in native code are prevented from returning to the VM while the safepoint is in progress. This means that the VM operation can be executed knowing that no thread can be in the middle of modifying the Java heap, and all threads are in a state such that their Java stacks are unchanging and can be examined.</p>
+<blockquote>
+<p>VM 线程会等待被添加至 VM 操作指令队列的操作(指令), 然后执行这些操作. 通常这些操作传递给 VM 线程, 因为只有虚拟机线程到达安全点后才能执行. 简单来说, 当虚拟机处于安全点时, 所有虚拟机内的线程都会阻塞, 任何执行native代码的线程在安全点期间会被阻止返回到虚拟机 (执行Java代码). 这意味着虚拟机处于没有线程正在修改Java堆, 并且所有线程都处于栈不会变化的状态, 这样可以执行检查 (保证结果不发生变化).</p>
+</blockquote>
+<p>The most familiar VM operation is for garbage collection, or more specifically for the “stop-the-world” phase of garbage collection that is common to many garbage collection algorithms. But many other safepoint based VM operations exist, for example: biased locking revocation, thread stack dumps, thread suspension or stopping (i.e. The java.lang.Thread.stop() method) and numerous inspection/modification operations requested through JVMTI.</p>
+<blockquote>
+<p>最广为人知的 VM 操作就是 GC, 亦或是特指许多 GC 算法中共同的 “stop-the-world” 阶段. 也还有许多基于虚拟机safepoint的操作, 例如: 废除偏向锁, 线程栈转储, 线程挂起或停止 (i.e. java.lang.Thread.stop), 还有依靠 JVMTI (JVM Tool Interface) 执行的许多检查和修改操作.</p>
+</blockquote>
+<p>Many VM operations are synchronous, that is the requestor blocks until the operation has completed, but some are asynchronous or concurrent, meaning that the requestor can proceed in parallel with the VMThread (assuming no safepoint is initiated of course).</p>
+<blockquote>
+<p>许多虚拟机操作都是同步的, 请求者会阻塞直到操作被完成. 但是有些也是非同步或者并发待, 意味着请求者会与虚拟机线程并行 (即使线程中没有安全点).</p>
+</blockquote>
+<p>Safepoints are initiated using a cooperative, polling-based mechanism. In simple terms, every so often a thread asks “should I block for a safepoint?”. Asking this question efficiently is not so simple. One place where the question is often asked is during a thread state transition. Not all state transitions do this, for example a thread leaving the VM to go to native code, but many do. The other places where a thread asks are in compiled code when returning from a method or at certain stages during loop iteration. Threads executing interpreted code don’t usually ask the question, instead when the safepoint is requested the interpreter switches to a different dispatch table that includes the code to ask the question; when the safepoint is over, the dispatch table is switched back again. Once a safepoint has been requested, the VMThread must wait until all threads are known to be in a safepoint-safe state before proceeding to execute the VM operation. During a safepoint the Threads_lock is used to block any threads that were running, with the VMThread finally releasing the Threads_lock after the VM operation has been performed.</p>
+<blockquote>
+<p>安全点采用基于轮询的合作机制进行启动. 简单来讲, 每隔一段时间线程就会询问, “我是否需要在安全点阻塞?”. 让询问变得有效率起来并不简单. 在线程切换状态的地方经常会进行询问, 但是不是所有状态变化的时候都会做这件事, 例如线程在执行 native 代码, 但大部分时候都会进行询问. 另一个询问的点是在被编译的代码中 (结合上下文, 这里应该是指虚拟机已经解释完成 VM 指令后的最终执行代码), 在从一个方法返回, 或者循环迭代的某些阶段. 线程执行代码的时候不会经常询问安全点, 取而代之的是在被请求安全点后, 字节码解释器切换到另一个不同的调度表, 用于在解释出的代码中添加安全点询问. 当安全点结束, 调度表又会被切换回去. 当安全点被请求后, 虚拟机线程必须等待所有线程进入安全点状态才能进行虚拟机操作. 在安全点期间会使用 <code>Theads_lock</code> 锁定正在运行的线程(?), 虚拟机线程在操作完成后会释放锁.</p>
+</blockquote>
+<p>P.S. 文中提到的 “VMThread” 和 “Java thread” 看说法是有区别的, 应该是指 系统线程 和 逻辑线程.</p>
+
+      
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/%E5%BC%80%E5%8F%91/">开发</a>, <a href="/categories/%E5%BC%80%E5%8F%91/Java/">Java</a>
+  </div>
+
+        
+  
+  <div class="tags">
+    <a href="/tags/GC/">GC</a>, <a href="/tags/JVM/">JVM</a>
+  </div>
+
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+<section id="comment">
+  <h1 class="title">留言</h1>
+
+  
+</section>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="搜索">
+    <input type="hidden" name="as_sitesearch" value="xh-gotz9.github.io">
+  </form>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">分类</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/CTF/BUUCTF/">BUUCTF</a><small>3</small></li>
+  
+    <li><a href="/categories/CTF/">CTF</a><small>3</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/Java/">Java</a><small>4</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/Rust/">Rust</a><small>1</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/">开发</a><small>6</small></li>
+  
+    <li><a href="/categories/%E6%9D%82%E6%96%87/">杂文</a><small>1</small></li>
+  
+    <li><a href="/categories/%E6%9D%82%E6%96%87/%E8%B5%84%E6%96%99%E6%95%B4%E7%90%86/">资料整理</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">标签</h3>
+  <ul class="entry">
+  
+    <li><a href="/tags/Aimer/">Aimer</a><small>1</small></li>
+  
+    <li><a href="/tags/GC/">GC</a><small>1</small></li>
+  
+    <li><a href="/tags/JVM/">JVM</a><small>1</small></li>
+  
+    <li><a href="/tags/Java/">Java</a><small>1</small></li>
+  
+    <li><a href="/tags/Kryo/">Kryo</a><small>1</small></li>
+  
+    <li><a href="/tags/Music/">Music</a><small>1</small></li>
+  
+    <li><a href="/tags/PHP/">PHP</a><small>1</small></li>
+  
+    <li><a href="/tags/Rust/">Rust</a><small>1</small></li>
+  
+    <li><a href="/tags/SQLI/">SQLI</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring/">Spring</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring-Boot/">Spring Boot</a><small>1</small></li>
+  
+    <li><a href="/tags/Spring-Security/">Spring Security</a><small>1</small></li>
+  
+    <li><a href="/tags/Unserialize/">Unserialize</a><small>1</small></li>
+  
+    <li><a href="/tags/protobuf/">protobuf</a><small>1</small></li>
+  
+    <li><a href="/tags/writeup/">writeup</a><small>3</small></li>
+  
+    <li><a href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/">多线程</a><small>1</small></li>
+  
+    <li><a href="/tags/%E5%BA%8F%E5%88%97%E5%8C%96/">序列化</a><small>1</small></li>
+  
+    <li><a href="/tags/%E6%99%BA%E8%83%BD%E6%8C%87%E9%92%88/">智能指针</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2021 gotz9
+  
+</div>
+<div class="clearfix"></div></footer>
+  
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+<script src="/js/jquery.imagesloaded.min.js"></script>
+
+
+<script src="/js/gallery.js"></script>
+
+
+
+
+
+</body>
+</html>
