@@ -1,0 +1,214 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  
+  <title>Java ReentrantLock | Log Horizon</title>
+  <meta name="author" content="gotz9">
+  
+  <meta name="description" content="ReentrantLock, 可重入锁, 是 Java concurrent 工具库中最简单, 最常用的同步工具类. 其特性具体分为公平锁和非公平锁. 本篇基于 Java 8, 从源码探究 ReentrantLock 实现和 fair/nonfair 区别.">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Java ReentrantLock"/>
+  <meta property="og:site_name" content="Log Horizon"/>
+
+  
+    <meta property="og:image" content=""/>
+  
+
+  <link rel="shortcut icon" href="/favicon.png">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  <!--[if lt IE 9]><script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script><![endif]-->
+  
+
+<meta name="generator" content="Hexo 5.2.0"></head>
+
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Log Horizon</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div>
+</header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article id="post-java-reentrant-lock" class="h-entry post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time class="dt-published" datetime="2021-06-23T13:32:20.000Z"><a href="/java-reentrant-lock/">2021-06-23</a></time>
+      
+      
+  
+    <h1 class="p-name title" itemprop="headline name">Java ReentrantLock</h1>
+  
+
+    </header>
+    <div class="e-content entry" itemprop="articleBody">
+      
+        <p>ReentrantLock, 可重入锁, 是 Java concurrent 工具库中最简单, 最常用的同步工具类. 其特性具体分为公平锁和非公平锁. 本篇基于 Java 8, 从源码探究 ReentrantLock 实现和 fair/nonfair 区别.</p>
+<a id="more"></a>
+
+<h2 id="basic"><a href="#basic" class="headerlink" title="basic"></a>basic</h2><p>Java 8 中, concurrent 工具中很多阻塞操作都依托于 <code>sun.misc.Unsafe</code> 提供的功能实现. 关于 Java 可重入锁, 主要需要介绍的是 <code>Unsafe.park</code> 系列函数, 以及将它组合为可直接使用的 API, <code>LockSupport</code> 类的 <code>park</code> 系列函数.</p>
+<p><code>park</code> 操作可以将线程对线程调度器隐藏, 不再获得 CPU 时间片. 与之对应的 <code>unpark</code> 则可以使线程重新加入调度队列, 恢复正常执行.</p>
+<h2 id="ReentrantLock"><a href="#ReentrantLock" class="headerlink" title="ReentrantLock"></a>ReentrantLock</h2><p>其内部使用通过策略模式, 根据构造函数, 实例化 fair/nonfair 形式的 Sync 类来达成实现效果.</p>
+<p>其 <code>lock</code> 与 <code>unlock</code> 操作分别对应 <code>Sync</code> 类的 <code>lock</code> 和 <code>release</code>. <code>tryLock</code> 则对应 <code>nonfairTryAcquire</code> 操作.</p>
+<h3 id="Sync"><a href="#Sync" class="headerlink" title="Sync"></a>Sync</h3><p>其继承 <code>AbstractQueuedSynchronizer</code>, 内部维护 Node 链表, Node 记录排队等待中的线程和其状态.</p>
+<p>内部记录当前独占线程, 其行为可简单概括如下:</p>
+<ol>
+<li>竞争者尝试获取锁</li>
+<li>若当前锁未被独占, 则 state 记录增加, 修改独占线程为自己. 若当前线程已独占锁, 则仅增加 state 值. 若前者条件无法达成, 则加入到 Node 链表尾进入排队状态.</li>
+<li>当执行释放锁操作, state 减少相应值. 若 state 减少至 0, 则移除当前独占线程记录, 并且会让 Node 队列中的 head 节点开始竞争锁.</li>
+</ol>
+<p>上文提到的 <code>park</code> 和 <code>unpark</code> 操作, 在这里就有非常重要的作用. 在线程进入等待队列时需要 <code>park</code> 让线程进入 “休眠” 状态, 在线程获取到锁后需要 <code>unpark</code> 从 “休眠” 中恢复.</p>
+<h2 id="fair-lock"><a href="#fair-lock" class="headerlink" title="fair lock"></a>fair lock</h2><p>公平锁, 每次 lock 仅进行 <code>acquire</code> 操作.</p>
+<p>其 <code>tryAcquire</code> 实现相较于 <code>Sync.nonfairTryAcquire</code>, 仅在 <code>c == 0</code> 条件成立后的 if 检查表达式, 多出了一个 <code>!hasQueuedPredecessors() &amp;&amp; ...</code>, 即表明如果有事先排队的线程, 则优先事先排队的线程获取.</p>
+<p>其所谓公平, 即锁竞争方面的 <code>先到先得</code>.</p>
+<h2 id="nonfair-lock"><a href="#nonfair-lock" class="headerlink" title="nonfair lock"></a>nonfair lock</h2><p>非公平锁, 其 lock 行为与公平锁有明显区别, 其首先会尝试插队获取锁:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">void</span> <span class="title">lock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (compareAndSetState(<span class="number">0</span>, <span class="number">1</span>))</span><br><span class="line">        setExclusiveOwnerThread(Thread.currentThread());</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        acquire(<span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>若 state 为 0 则修改为 1, 表示已经竞争获取到锁. 若获取失败, 在调用 <code>tryAcquire</code> 时则会直接使用 <code>Sync.nonfairTryAcquire</code> 操作再次尝试插队.</p>
+
+      
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/%E5%BC%80%E5%8F%91/">开发</a>, <a href="/categories/%E5%BC%80%E5%8F%91/Java/">Java</a>
+  </div>
+
+        
+  
+  <div class="tags">
+    <a href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/">多线程</a>
+  </div>
+
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+<section id="comment">
+  <h1 class="title">留言</h1>
+
+  
+</section>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="搜索">
+    <input type="hidden" name="as_sitesearch" value="xh-gotz9.github.io">
+  </form>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">分类</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/CTF/BUUCTF/">BUUCTF</a><small>3</small></li>
+  
+    <li><a href="/categories/CTF/">CTF</a><small>3</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/Java/">Java</a><small>3</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/Rust/">Rust</a><small>1</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/">开发</a><small>5</small></li>
+  
+    <li><a href="/categories/%E6%9D%82%E6%96%87/">杂文</a><small>1</small></li>
+  
+    <li><a href="/categories/%E6%9D%82%E6%96%87/%E8%B5%84%E6%96%99%E6%95%B4%E7%90%86/">资料整理</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">标签</h3>
+  <ul class="entry">
+  
+    <li><a href="/tags/Aimer/">Aimer</a><small>1</small></li>
+  
+    <li><a href="/tags/Java/">Java</a><small>1</small></li>
+  
+    <li><a href="/tags/Kryo/">Kryo</a><small>1</small></li>
+  
+    <li><a href="/tags/Music/">Music</a><small>1</small></li>
+  
+    <li><a href="/tags/PHP/">PHP</a><small>1</small></li>
+  
+    <li><a href="/tags/Rust/">Rust</a><small>1</small></li>
+  
+    <li><a href="/tags/SQLI/">SQLI</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring/">Spring</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring-Boot/">Spring Boot</a><small>1</small></li>
+  
+    <li><a href="/tags/Spring-Security/">Spring Security</a><small>1</small></li>
+  
+    <li><a href="/tags/Unserialize/">Unserialize</a><small>1</small></li>
+  
+    <li><a href="/tags/protobuf/">protobuf</a><small>1</small></li>
+  
+    <li><a href="/tags/writeup/">writeup</a><small>3</small></li>
+  
+    <li><a href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/">多线程</a><small>1</small></li>
+  
+    <li><a href="/tags/%E5%BA%8F%E5%88%97%E5%8C%96/">序列化</a><small>1</small></li>
+  
+    <li><a href="/tags/%E6%99%BA%E8%83%BD%E6%8C%87%E9%92%88/">智能指针</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2021 gotz9
+  
+</div>
+<div class="clearfix"></div></footer>
+  
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+<script src="/js/jquery.imagesloaded.min.js"></script>
+
+
+<script src="/js/gallery.js"></script>
+
+
+
+
+
+</body>
+</html>

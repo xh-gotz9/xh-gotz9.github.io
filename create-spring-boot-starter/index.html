@@ -1,0 +1,215 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  
+  <title>创建 spring-boot-starter | Log Horizon</title>
+  <meta name="author" content="gotz9">
+  
+  <meta name="description" content="本篇的主要目的是记录编写一个自定义 Spring Security 模块的 spring boot starter 过程中遇到的问题.">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="创建 spring-boot-starter"/>
+  <meta property="og:site_name" content="Log Horizon"/>
+
+  
+    <meta property="og:image" content=""/>
+  
+
+  <link rel="shortcut icon" href="/favicon.png">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  <!--[if lt IE 9]><script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script><![endif]-->
+  
+
+<meta name="generator" content="Hexo 5.2.0"></head>
+
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Log Horizon</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div>
+</header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article id="post-create-spring-boot-starter" class="h-entry post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time class="dt-published" datetime="2021-06-19T13:39:09.786Z"><a href="/create-spring-boot-starter/">2021-06-19</a></time>
+      
+      
+  
+    <h1 class="p-name title" itemprop="headline name">创建 spring-boot-starter</h1>
+  
+
+    </header>
+    <div class="e-content entry" itemprop="articleBody">
+      
+        <p>本篇的主要目的是记录编写一个自定义 Spring Security 模块的 spring boot starter 过程中遇到的问题.</p>
+<a id="more"></a>
+
+<p>本篇参考: </p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://www.baeldung.com/spring-boot-custom-starter">Creating a Custom Starter with Spring Boot</a>.</li>
+<li><a target="_blank" rel="noopener" href="https://docs.spring.io/spring-boot/docs/2.0.0.M3/reference/html/boot-features-developing-auto-configuration.html">Creating your own auto-configuration</a></li>
+</ul>
+<h2 id="core"><a href="#core" class="headerlink" title="core"></a>core</h2><p>首先是 <code>core</code> 模块, 它主要存放一些核心功能的类. 例如自定义的 Voter, AuthenticationProvider. 用 mybatis 项目类比的话, core 就是 mybatis 项目本身, 拥有核心的功能实现.</p>
+<h2 id="autoconfigure"><a href="#autoconfigure" class="headerlink" title="autoconfigure"></a>autoconfigure</h2><p>之后创建 <code>autoconfigure</code> 模块, 进行一些 Bean 的自动装配. mybatis 的自动装配主要是构建 <code>SqlSessionFactory</code>. 我的项目是对 Spring Security 功能的扩展, 所以可以利用 spring-boot-starter-security 的自动装配, 在其加载过程中接入 core 的 Voter/AuthenticationProvider 组件.</p>
+<pre><code>Tips. spring security web 装配过程
+1. `spring-boot-autoconfigure` 的 `spring.factories` 文件指定加载配置类 `SecurityAutoConfiguration`
+2. `SecurityAutoConfiguration` import `SpringBootWebSecurityConfiguration`
+3. `SpringBootWebSecurityConfiguration` 声明, 在装载了类 `WebSecurityConfigurerAdapter`, 缺少 `WebSecurityConfigurerAdapter` bean 的时候进行配置, 创建一个默认的 `DefaultConfigurerAdapter` 配置 bean.</code></pre><p>这样 WebSecurityConfigurerAdapter 就完成了默认的装配. 如果需要接入自动装配流程, 那需要在装配默认配置类之前装配一个 WebSecurityConfigurerAdapter 类型的 bean.</p>
+<p>因为打算强关联一些逻辑, 创建了一个继承 <code>WebSecurityConfigurerAdapter</code> 的抽象类 <code>WebSecurityPluginConfiguration</code>, 在其中添加了一些抽象方法需要用户来实现, 需要用户自行实现一些逻辑.</p>
+<p>再者准备做成插件形式, 所以采用了注解的方式进行开关, 注解的设计参考了 <code>EnableWebSecurity</code>. EnableWebSecurity 主要是应用了 <code>Import</code> 注解, 其参数又分为普通配置类和 <code>ImportSelector</code> 实现类两种情况. 配置类参数为静态引入, 而 <code>ImportSelector</code> 则可以执行代码, 计算得出需要 import 的配置类.</p>
+<p>装配参考了 <code>SpringBootWebSecurityConfiguration.DefaultConfigurerAdapter</code>, 创建一个默认的 PluginConfiguration 实现, 通过 <code>WebSecurityPluginProperties</code> 来对进行配置. 利用 <code>ConditionalOnXxx</code> 等注解可以做到选择性装配 bean. 例如 <code>SpringBootWebSecurityConfiguration</code> 就指定了如下配置:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Configuration(proxyBeanMethods = false)</span></span><br><span class="line"><span class="meta">@ConditionalOnClass(&#123;WebSecurityConfigurerAdapter.class&#125;)</span></span><br><span class="line"><span class="meta">@ConditionalOnMissingBean(&#123;WebSecurityConfigurerAdapter.class&#125;)</span></span><br><span class="line"><span class="meta">@ConditionalOnWebApplication(type = Type.SERVLET)</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SpringBootWebSecurityConfiguration</span> </span>&#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>意为当满足条件: spring 容器的 classloader 加载了 <code>WebSecurityConfigurerAdapter</code>, 并且容器中不存在 <code>WebSecurityConfigurerAdapter</code> 类型的 bean, 且 Web 应用是基于 Servlet 的, 那么就应用此配置装配 bean.</p>
+<p>在完成代码后, 因为要让 spring boot 在引用时自动加载, 所以需要在打包时提供一些 Bean 加载的配置, 存放在 <code>META-INF/spring.factories</code> 中, 使用方式可以参考 <code>spring-boot-autoconfigure</code> 项目中的该文件.</p>
+<h2 id="starter"><a href="#starter" class="headerlink" title="starter"></a>starter</h2><p>是个空 jar 包, 仅是引入了程序运行使用到的一些依赖, 例如基本的 <code>spring-boot-starter-parent</code>, 一些 log 工具, Datasource 的 starter 等. 这样做可以让逻辑代码和 spring bean 装配分离, 确保只有在使用了 starter 包的情况下才会自动装配 bean. 引入其他依赖库的 starter 则可以默认引用其配置规则, 作为自身所需配置的一部分.</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>spring-boot-starter 主要是为了让原本的依赖库代码适配 Spring Boot 应用的启动方式. <code>core</code> 模块自然不用多说, 是依赖库的应用逻辑, spring-boot-starter 开发主要是在 <code>autoconfigure</code> 模块, 去考虑如何创建 bean, 如何根据环境进行弹性装配, 应该为用户提供怎么样的配置选项方面.</p>
+
+      
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/%E5%BC%80%E5%8F%91/">开发</a>, <a href="/categories/%E5%BC%80%E5%8F%91/Java/">Java</a>
+  </div>
+
+        
+  
+  <div class="tags">
+    <a href="/tags/Spring/">Spring</a>, <a href="/tags/Spring-Boot/">Spring Boot</a>
+  </div>
+
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+<section id="comment">
+  <h1 class="title">留言</h1>
+
+  
+</section>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="搜索">
+    <input type="hidden" name="as_sitesearch" value="xh-gotz9.github.io">
+  </form>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">分类</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/CTF/BUUCTF/">BUUCTF</a><small>3</small></li>
+  
+    <li><a href="/categories/CTF/">CTF</a><small>3</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/Java/">Java</a><small>3</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/Rust/">Rust</a><small>1</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/">开发</a><small>5</small></li>
+  
+    <li><a href="/categories/%E6%9D%82%E6%96%87/">杂文</a><small>1</small></li>
+  
+    <li><a href="/categories/%E6%9D%82%E6%96%87/%E8%B5%84%E6%96%99%E6%95%B4%E7%90%86/">资料整理</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">标签</h3>
+  <ul class="entry">
+  
+    <li><a href="/tags/Aimer/">Aimer</a><small>1</small></li>
+  
+    <li><a href="/tags/Java/">Java</a><small>1</small></li>
+  
+    <li><a href="/tags/Kryo/">Kryo</a><small>1</small></li>
+  
+    <li><a href="/tags/Music/">Music</a><small>1</small></li>
+  
+    <li><a href="/tags/PHP/">PHP</a><small>1</small></li>
+  
+    <li><a href="/tags/Rust/">Rust</a><small>1</small></li>
+  
+    <li><a href="/tags/SQLI/">SQLI</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring/">Spring</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring-Boot/">Spring Boot</a><small>1</small></li>
+  
+    <li><a href="/tags/Spring-Security/">Spring Security</a><small>1</small></li>
+  
+    <li><a href="/tags/Unserialize/">Unserialize</a><small>1</small></li>
+  
+    <li><a href="/tags/protobuf/">protobuf</a><small>1</small></li>
+  
+    <li><a href="/tags/writeup/">writeup</a><small>3</small></li>
+  
+    <li><a href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/">多线程</a><small>1</small></li>
+  
+    <li><a href="/tags/%E5%BA%8F%E5%88%97%E5%8C%96/">序列化</a><small>1</small></li>
+  
+    <li><a href="/tags/%E6%99%BA%E8%83%BD%E6%8C%87%E9%92%88/">智能指针</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2021 gotz9
+  
+</div>
+<div class="clearfix"></div></footer>
+  
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+<script src="/js/jquery.imagesloaded.min.js"></script>
+
+
+<script src="/js/gallery.js"></script>
+
+
+
+
+
+</body>
+</html>
