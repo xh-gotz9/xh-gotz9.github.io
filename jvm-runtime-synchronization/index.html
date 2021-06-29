@@ -1,0 +1,257 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  
+  <title>Java Runtime Overview - Synchronization | Log Horizon</title>
+  <meta name="author" content="gotz9">
+  
+  <meta name="description" content="在做 GC Safepoint 翻译篇的时候又扫了一遍其来源的 OpenJDK 文档, 在 Synchronization 章节找到了偏向锁 (Biased Locking) 相关的说明. 虽然 JEP-374 表明 Java 15 开始将废弃了偏向锁, 但当前 Java 新版本落地进度缓慢, 还是以 Java 8 为主, 并且其设计思想也值得学习.">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Java Runtime Overview - Synchronization"/>
+  <meta property="og:site_name" content="Log Horizon"/>
+
+  
+    <meta property="og:image" content=""/>
+  
+
+  <link rel="shortcut icon" href="/favicon.png">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  <!--[if lt IE 9]><script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script><![endif]-->
+  
+
+<meta name="generator" content="Hexo 5.2.0"></head>
+
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Log Horizon</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div>
+</header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article id="post-jvm-runtime-synchronization" class="h-entry post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time class="dt-published" datetime="2021-06-29T13:37:01.000Z"><a href="/jvm-runtime-synchronization/">2021-06-29</a></time>
+      
+      
+  
+    <h1 class="p-name title" itemprop="headline name">Java Runtime Overview - Synchronization</h1>
+  
+
+    </header>
+    <div class="e-content entry" itemprop="articleBody">
+      
+        <p>在做 GC Safepoint 翻译篇的时候又扫了一遍其来源的 <a target="_blank" rel="noopener" href="http://openjdk.java.net/groups/hotspot/docs/RuntimeOverview.html">OpenJDK 文档</a>, 在 <code>Synchronization</code> 章节找到了偏向锁 (Biased Locking) 相关的说明. 虽然 <a target="_blank" rel="noopener" href="https://openjdk.java.net/jeps/374">JEP-374</a> 表明 Java 15 开始将废弃了偏向锁, 但当前 Java 新版本落地进度缓慢, 还是以 Java 8 为主, 并且其设计思想也值得学习.</p>
+<a id="more"></a>
+
+<h2 id="正文"><a href="#正文" class="headerlink" title="正文"></a>正文</h2><p>Broadly, we can define “synchronization” as a mechanism that prevents, avoids or recovers from the inopportune interleavings (commonly called “races”) of concurrent operations. In Java, concurrency is expressed through the thread construct. Mutual exclusion is a special case of synchronization where at most a single thread is permitted access to protected code or data.</p>
+<blockquote>
+<p>广义上的, 我们定义 “synchronization” 为防止/避免或从并发操作不合时宜的交错 (通常称作 “竞争”) 中恢复的机制. 在 Java 中, 并发是通过构造线程来实现的. 互斥是同步的特殊情况, 它只允许最多一个线程访问受保护的代码或数据.</p>
+</blockquote>
+<p>HotSpot provides Java monitors by which threads running application code may participate in a mutual exclusion protocol. A monitor is either locked or unlocked, and only one thread may own the monitor at any one time. Only after acquiring ownership of a monitor may a thread enter the critical section protected by the monitor. In Java, critical sections are referred to as “synchronized blocks”, and are delineated in code by the synchronized statement.</p>
+<blockquote>
+<p>Hotspot 提供 Java monitor, 运行应用程序代码的线程可以通过它参与互斥协议. 一个 monitor 仅存在被锁定和未锁定两种状态, 任意时间仅有一个线程能够持有该 monitor. 仅在获取到 monitor 之后, 线程才能进入 monitor 保护的临界区内. 在 Java 中, 临界区被称为 “synchronized blocks”, 且在代码中通过同步语句描述.</p>
+</blockquote>
+<p>If a thread attempts to lock a monitor and the monitor is in an unlocked state, the thread will immediately gain ownership of the monitor. If a subsequent thread attempts to gain ownership of the monitor while the monitor is locked that thread will not be permitted to proceed into the critical section until the owner releases the lock and the 2nd thread manages to gain (or is granted) exclusive ownership of the lock.</p>
+<blockquote>
+<p>如果一个线程尝试对一个 monitor 加锁, 并且当前 monitor 处于未加锁状态, 这个线程将立即获得 monitor 的所有权. 如果随后的线程在 monitor 被锁定期间尝试获取这个 monitor 的所有权, 那这个线程将不被允许进入临界区, 直到当前的 monitor 所有者放弃所有权并且后续线程设法获得锁的独占权.</p>
+</blockquote>
+<p>Some additional terminology: to “enter” a monitor means to acquire exclusive ownership of the monitor and enter the associated critical section. Likewise, to “exit” a monitor means to release ownership of the monitor and exit the critical section. We also say that a thread that has locked a monitor now “owns” that monitor. “Uncontended” refers to synchronization operations on an otherwise unowned monitor by only a single thread.</p>
+<blockquote>
+<p>一些附加属于: “进入” monitor 意味着获得 monitor 的独占所有权并且进入相关的临界区. 类似的, “退出” monitor 意味着释放 monitor 的所有权并且从临界区中退出. 我们同样称一个锁定 monitor 的线程 “拥有” 该 monitor . “无竞争” 是指仅由单个线程在其他无主 monitor 上进行的同步操作.</p>
+</blockquote>
+<p>The HotSpot VM incorporates leading-edge techniques for both uncontended and contended synchronization operations which boost synchronization performance by a large factor.</p>
+<blockquote>
+<p>Hotspot VM 结合了无竞争和竞争同步操作, 提高了同步性能.</p>
+</blockquote>
+<p>Uncontended synchronization operations, which comprise the majority of synchronizations, are implemented with constant-time techniques. With biased locking, in the best case these operations are essentially free of cost. Since most objects are locked by at most one thread during their lifetime, we allow that thread to bias an object toward itself. Once biased, that thread can subsequently lock and unlock the object without resorting to expensive atomic instructions. </p>
+<blockquote>
+<p>无竞争同步操作 (其代表着大部分同步操作), 通过常量时间技术实现. <strong>通过使用偏置锁, 在最好的情况下, 这些操作基本上都是无开销的. 由于大部分对象在生命周期中最多被一个线程锁定, 因此允许该线程将对象偏向自身. 一旦设置偏向, 该线程随后可以锁定和解锁对象, 而无需求助于高开销的原子操作指令.</strong></p>
+</blockquote>
+<p>Contended synchronization operations use advanced adaptive spinning techniques to improve throughput even for applications with significant amounts of lock contention. As a result, synchronization performance becomes so fast that it is not a significant performance issue for the vast majority of real-world programs.</p>
+<blockquote>
+<p><strong>争用同步操作使用自适应自旋计数提高吞吐量, 即使对于具有大量争用的程序也是这样</strong>. </p>
+</blockquote>
+<p>In HotSpot, most synchronization is handled through what we call “fast-path” code. We have two just-in-time compilers (JITs) and an interpreter, all of which will emit fast-path code. The two JITs are “C1”, which is the -client compiler, and “C2”, which is the -server compiler. C1 and C2 both emit fast-path code directly at the synchronization site. In the normal case when there’s no contention, the synchronization operation will be completed entirely in the fast-path. If, however, we need to block or wake a thread (in monitorenter or monitorexit, respectively), the fast-path code will call into the slow-path. The slow-path implementation is in native C++ code while the fast-path is emitted by the JITs.</p>
+<blockquote>
+<p>在 HotSpot 中, 大多数同步是通过所谓的快捷路径代码处理的. 我们有两个 JIT 编译器和一个解释器, 所有的这些都会分发快捷路径代码. 这两个 JIT 是分别是 “C1”, 即 -client 编译器,  和 “C2”, 即 -server 编译器. C1 和 C2 在同步位置都直接分发快捷路径代码. <strong>在没有争用的情况下, 同步操作将通过快捷路径完成, 然而如果需要阻塞或唤醒一个线程时 (monitorenter 或 monitorexit 中), 快速路径代码将调用慢路径. 慢路径通过 native 的 C++ 代码实现, 而快速路径的代码是通过 JIT 分发</strong>.</p>
+</blockquote>
+<p>Per-object synchronization state is encoded in the first word (the so-called mark word) of the VM’s object representation. For several states, the mark word is multiplexed to point to additional synchronization metadata. (As an aside, in addition, the mark word is also multiplexed to contain GC age data, and the object’s identity hashCode value.) The states are:</p>
+<ul>
+<li><p>Neutral: Unlocked</p>
+</li>
+<li><p>Biased: Locked/Unlocked + Unshared</p>
+</li>
+<li><p>Stack-Locked: Locked + Shared but uncontended</p>
+<p>  The mark points to displaced mark word on the owner thread’s stack.</p>
+</li>
+<li><p>Inflated: Locked/Unlocked + Shared and contended</p>
+<p>  Threads are blocked in monitorenter or wait().<br>  The mark points to heavy-weight “objectmonitor” structure.</p>
+</li>
+</ul>
+<blockquote>
+<p>每个对象的同步状态被编码在 VM 层面对象结构中的第一个字中. 对于一些状态, 标记词被复用以指向额外的同步元数据. (此外, 标记字也被用以记录 GC 的年龄数据, 以及对象的身份 hashCode 值) 状态为:</p>
+<ul>
+<li><p>Neutral: 未锁定</p>
+</li>
+<li><p>Biased: 锁定/未锁定 + 不共享</p>
+</li>
+<li><p>Stack-Locked: 被锁定 + 共享但是无竞争.</p>
+<p> 这个标记指向所有者线程堆栈上的 Displaced Mark Word.</p>
+</li>
+<li><p>Inflated: 锁定/未锁定 + 共享且有竞争</p>
+<p> 线程阻塞在 monitorenter 或 wait() 处. 标记指向一个”重量级”对象 monitor 结构体.</p>
+</li>
+</ul>
+</blockquote>
+<h2 id="锁升级"><a href="#锁升级" class="headerlink" title="锁升级"></a>锁升级</h2><p>将文档最后一段与 <strong>深入理解 Java 虚拟机</strong> 中第 13.3.3 部分对 Mark Word 的说明结合来理解 Biased, Stack-Locked, Inflated.</p>
+<p>首先是 Stack-Locked, 若进入临界区前对象没有被加锁 (Neutral), VM 首先在栈帧中创建 Lock Record, 存储当前对象的 Mark Word 拷贝, 即 Displaced Mark Word. 然后对象内的 Mark Word 数据将更新为指向 Displaced Mark Word 的指针, 而标志位更新为 Stack-Locked (‘00’) 表已被轻量锁锁定. 若更新失败, 检查对象是否指向自身的 Lock Record, 若是, 直接进入临界区 不是, 则表明对象锁发生了竞争, 膨胀为重量级锁, 变为 Inflated 状态.</p>
+<p>偏向锁是针对轻量锁部分的优化, 用于消除轻量锁无竞争状态下的同步操作, 其在 Mark Word 中占用一位表示偏向是否可用. 对象锁在第一次被获取时, Mark Word 设置为偏向锁模式, 使用 CAS 将获取到锁的线程记录到 Mark Word 中, 如果成功, 之后的同步操作只需要执行线程是否锁的偏向目标则可直接进入临界区, 无需其他同步操作. 当偏向锁发生竞争, 撤销偏向锁, 恢复锁为无锁或轻量级锁状态, 后续升级则不变.</p>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+  
+  <div class="tags">
+    <a href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/">多线程</a>, <a href="/tags/JVM/">JVM</a>
+  </div>
+
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+<section id="comment">
+  <h1 class="title">留言</h1>
+
+  
+</section>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="搜索">
+    <input type="hidden" name="as_sitesearch" value="xh-gotz9.github.io">
+  </form>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">分类</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/CTF/BUUCTF/">BUUCTF</a><small>3</small></li>
+  
+    <li><a href="/categories/CTF/">CTF</a><small>3</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/Java/">Java</a><small>4</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/Rust/">Rust</a><small>1</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/">开发</a><small>6</small></li>
+  
+    <li><a href="/categories/%E6%9D%82%E6%96%87/">杂文</a><small>1</small></li>
+  
+    <li><a href="/categories/%E6%9D%82%E6%96%87/%E8%B5%84%E6%96%99%E6%95%B4%E7%90%86/">资料整理</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">标签</h3>
+  <ul class="entry">
+  
+    <li><a href="/tags/Aimer/">Aimer</a><small>1</small></li>
+  
+    <li><a href="/tags/GC/">GC</a><small>1</small></li>
+  
+    <li><a href="/tags/JVM/">JVM</a><small>2</small></li>
+  
+    <li><a href="/tags/Java/">Java</a><small>1</small></li>
+  
+    <li><a href="/tags/Kryo/">Kryo</a><small>1</small></li>
+  
+    <li><a href="/tags/Music/">Music</a><small>1</small></li>
+  
+    <li><a href="/tags/PHP/">PHP</a><small>1</small></li>
+  
+    <li><a href="/tags/Rust/">Rust</a><small>1</small></li>
+  
+    <li><a href="/tags/SQLI/">SQLI</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring/">Spring</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring-Boot/">Spring Boot</a><small>1</small></li>
+  
+    <li><a href="/tags/Spring-Security/">Spring Security</a><small>1</small></li>
+  
+    <li><a href="/tags/Unserialize/">Unserialize</a><small>1</small></li>
+  
+    <li><a href="/tags/protobuf/">protobuf</a><small>1</small></li>
+  
+    <li><a href="/tags/writeup/">writeup</a><small>3</small></li>
+  
+    <li><a href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/">多线程</a><small>2</small></li>
+  
+    <li><a href="/tags/%E5%BA%8F%E5%88%97%E5%8C%96/">序列化</a><small>1</small></li>
+  
+    <li><a href="/tags/%E6%99%BA%E8%83%BD%E6%8C%87%E9%92%88/">智能指针</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2021 gotz9
+  
+</div>
+<div class="clearfix"></div></footer>
+  
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+<script src="/js/jquery.imagesloaded.min.js"></script>
+
+
+<script src="/js/gallery.js"></script>
+
+
+
+
+
+</body>
+</html>
