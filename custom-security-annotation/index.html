@@ -1,0 +1,243 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  
+  <title>自定义 Spring Security 方法注解 | Log Horizon</title>
+  <meta name="author" content="gotz9">
+  
+  <meta name="description" content="Spring Security 的方法级鉴权, 默认提供了三种实现, 即 EnableGlobalMethodSecurity 注解的参数: prePost, secured, jsr250. 这三个参数对应了三组不同的注解, 用于为类型或方法添加配置元数据. 如果不想使用默认提供的配置, 还可以通过在配置中提供自定义的 MethodSecurityMetadataSource 进行扩展.">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="自定义 Spring Security 方法注解"/>
+  <meta property="og:site_name" content="Log Horizon"/>
+
+  
+    <meta property="og:image" content=""/>
+  
+
+  <link rel="shortcut icon" href="/favicon.png">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  <!--[if lt IE 9]><script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script><![endif]-->
+  
+
+<meta name="generator" content="Hexo 5.2.0"></head>
+
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Log Horizon</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div>
+</header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article id="post-custom-security-annotation" class="h-entry post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time class="dt-published" datetime="2021-07-11T02:37:01.000Z"><a href="/custom-security-annotation/">2021-07-11</a></time>
+      
+      
+  
+    <h1 class="p-name title" itemprop="headline name">自定义 Spring Security 方法注解</h1>
+  
+
+    </header>
+    <div class="e-content entry" itemprop="articleBody">
+      
+        <p>Spring Security 的方法级鉴权, 默认提供了三种实现, 即 <code>EnableGlobalMethodSecurity</code> 注解的参数: <code>prePost</code>, <code>secured</code>, <code>jsr250</code>. 这三个参数对应了三组不同的注解, 用于为类型或方法添加配置元数据. 如果不想使用默认提供的配置, 还可以通过在配置中提供自定义的 <code>MethodSecurityMetadataSource</code> 进行扩展.</p>
+<a id="more"></a>
+
+<h2 id="SecurityMetadataSource"><a href="#SecurityMetadataSource" class="headerlink" title="SecurityMetadataSource"></a>SecurityMetadataSource</h2><p>首先需要看的是 <code>MethodSecurityMetadataSource</code> 的父接口 <code>SecurityMetadataSource</code>, 它被定义用于获取访问对象的元数据, 通常是一些权限限制之类的数据. </p>
+<p>Spring Security 的方法访问因为会使用 AOP 来对方法调用织入鉴权操作, 所以访问对象被包装成了 <code>org.aopalliance.intercept.MethodInvocation</code>. web 访问会通过 Spring Security提供的 Filter 鉴权, 访问对象则被包装成了 <code>org.springframework.security.web.FilterInvocation</code>.</p>
+<p>而根据访问目标提取到的配置, 则可以自由发挥. 例如 Method Security 相关的三种默认实现都是通过访问目标的方法的注解提取出相关的配置元数据, prePost 的 <code>PostAuthorize</code> 注解内配置 SpringEL 表达式, 在注解方法调用前的根据访问环境进行计算, 根据结果决定是否允许访问. 而 jsr250 提供的 <code>RolesAllowed</code> 注解则是配置了一组 role name, 允许拥有其中任意 role 的用户访问.</p>
+<p>最终, 提取到的元数据都会被转为实现 <code>ConfigAttribute</code> 的对象.</p>
+<h2 id="CustomizedMethodSecurityMetadataSource"><a href="#CustomizedMethodSecurityMetadataSource" class="headerlink" title="CustomizedMethodSecurityMetadataSource"></a>CustomizedMethodSecurityMetadataSource</h2><p>如果 Spring Security 提供的默认实现不能满足用户的需求, 也可以自行定制. 对于方法鉴权, 可以考虑重写配置类 <code>GlobalMethodSecurityConfiguration#customMethodSecurityMetadataSource</code> 方法或者直接重写 <code>GlobalMethodSecurityConfiguration#methodSecurityMetadataSource</code>. 两者都需要用户提供一个 <code>MethodSecurityMetadataSource</code> 实现.</p>
+<p>对于 <code>MethodSecurityMetadataSource</code> 接口, 有抽象类 <code>AbstractMethodSecurityMetadataSource</code>, 它实现了从 <code>SecurityMetadataSource#getAttributes(Object)</code> 调用到 <code>MethodSecurityMetadataSource#getAttributes(Method, Class&lt;?&gt;)</code> 调用的逻辑, 用户可以更专注于实现从 <code>Method</code> 和 <code>Class</code> 中提取元数据.</p>
+<p>由于访问目标可能是已经经过了 AOP 代理的类, 所以在 <code>AbstractMethodSecurityMetadataSource</code> 的基础上派生出了 <code>AbstractFallbackMethodSecurityMetadataSource</code> 用于从原始的调用目标上获取元数据.</p>
+<p>而在此基础上, 还有拥有更高一层抽象的 <code>SecuredAnnotationSecurityMetadataSource</code>, 它使用 <code>AnnotationMetadataExtractor</code>, 用于从注解中提取元数据. 用户可以仅实现 <code>AnnotationMetadataExtractor</code> 来提取注解中的元数据, 无需关心提取过程. 但其实现仅支持提取单个注解, 如果需要多种注解, 可以尝试对 <code>SecuredAnnotationSecurityMetadataSource</code> 进行扩展.</p>
+<h2 id="CustomizedAccessDecisionVoter"><a href="#CustomizedAccessDecisionVoter" class="headerlink" title="CustomizedAccessDecisionVoter"></a>CustomizedAccessDecisionVoter</h2><p>如果有了新的元数据配置规则, 自然要有能够解析元数据规则的角色. 当然你也可以考虑让 MetadataSource 的解析结果兼容默认的规则.</p>
+<p>可以参考 <code>Jsr250Voter</code> 的方式, SecurityMetadataSource 提供自定义的 <code>ConfigAttribute</code> 类型, voter 通过类型检查是否支持鉴权. 当然也可以通过 <code>ConfigAttribute</code> 获取到的字符串表达式来筛选, 具体看个人需求.</p>
+<h2 id="Example"><a href="#Example" class="headerlink" title="Example"></a>Example</h2><p>具体例程可以参考我的 security-plugin-spring-boot-starter 组件.</p>
+<p><a target="_blank" rel="noopener" href="https://github.com/xh-gotz9/security-plugin-spring-boot-starter/commit/99559dc56ddb6e3d978bcccd3acd98d90e5716fa">添加 Ant 权限表达式支持</a>.</p>
+<ul>
+<li>采用了 <code>AnnotationMetadataExtractor</code> 的实现方式.</li>
+<li>SecurityMetadataSource 提供 <code>AntConfigAttribute</code></li>
+<li>voter 验证时需要访问目标拥有 <code>AntConfigAttribute</code> 类型的配置, 用户拥有 <code>AntGrantedAuthority</code> 类型的授权. (强制限定 <code>AntGrantedAuthority</code> 类型用户权限会导致认证逻辑变复杂, 可以考虑优化为 RoleVoter 的权限字符串前缀检测)</li>
+<li>使用了现成的 AntMatcher 比对逻辑, 将默认的路径分隔符 <code>/</code> 替换为 <code>:</code>. </li>
+</ul>
+<p><a target="_blank" rel="noopener" href="https://github.com/xh-gotz9/security-plugin-spring-boot-starter/commit/d75ec94c3f1e12f9a77a2c189cf43e773746cddb">添加功能接入配置</a></p>
+<ul>
+<li>重写 <code>GlobalMethodSecurityConfiguration#customMethodSecurityMetadataSource</code> 方法, 提供自定义的 MetadataSource.</li>
+<li>重写 <code>GlobalMethodSecurityConfiguration#accessDecisionManager</code>, 自定义 voter 处理链.</li>
+</ul>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+  
+  <div class="tags">
+    <a href="/tags/Spring-Boot/">Spring Boot</a>, <a href="/tags/Spring-Security/">Spring Security</a>
+  </div>
+
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+<section id="comment">
+  <h1 class="title">留言</h1>
+
+  
+      <div id="fb-root"></div>
+<script>
+  (function(d, s, id) {
+    var js, fjs = d.getElementsByTagName(s)[0];
+    if (d.getElementById(id)) return;
+    js = d.createElement(s); js.id = id;
+    js.src = "//connect.facebook.net/en_US/all.js#xfbml=1&appId=123456789012345";
+    fjs.parentNode.insertBefore(js, fjs);
+  }(document, 'script', 'facebook-jssdk'));
+</script>
+
+<div class="fb-comments" data-href="https://xh-gotz9.github.io/custom-security-annotation/index.html" data-num-posts="5" data-width="840" data-colorscheme="light"></div>
+      
+  
+</section>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="搜索">
+    <input type="hidden" name="as_sitesearch" value="xh-gotz9.github.io">
+  </form>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">分类</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/CTF/BUUCTF/">BUUCTF</a><small>3</small></li>
+  
+    <li><a href="/categories/CTF/">CTF</a><small>3</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/Java/">Java</a><small>4</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/Rust/">Rust</a><small>1</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/">开发</a><small>6</small></li>
+  
+    <li><a href="/categories/%E6%9D%82%E6%96%87/">杂文</a><small>1</small></li>
+  
+    <li><a href="/categories/%E6%9D%82%E6%96%87/%E8%B5%84%E6%96%99%E6%95%B4%E7%90%86/">资料整理</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">标签</h3>
+  <ul class="entry">
+  
+    <li><a href="/tags/Aimer/">Aimer</a><small>1</small></li>
+  
+    <li><a href="/tags/GC/">GC</a><small>1</small></li>
+  
+    <li><a href="/tags/JVM/">JVM</a><small>2</small></li>
+  
+    <li><a href="/tags/Java/">Java</a><small>1</small></li>
+  
+    <li><a href="/tags/Kryo/">Kryo</a><small>1</small></li>
+  
+    <li><a href="/tags/Music/">Music</a><small>1</small></li>
+  
+    <li><a href="/tags/PHP/">PHP</a><small>1</small></li>
+  
+    <li><a href="/tags/Rust/">Rust</a><small>1</small></li>
+  
+    <li><a href="/tags/SQLI/">SQLI</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring/">Spring</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring-Boot/">Spring Boot</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring-Security/">Spring Security</a><small>2</small></li>
+  
+    <li><a href="/tags/Unserialize/">Unserialize</a><small>1</small></li>
+  
+    <li><a href="/tags/protobuf/">protobuf</a><small>1</small></li>
+  
+    <li><a href="/tags/writeup/">writeup</a><small>3</small></li>
+  
+    <li><a href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/">多线程</a><small>2</small></li>
+  
+    <li><a href="/tags/%E5%BA%8F%E5%88%97%E5%8C%96/">序列化</a><small>1</small></li>
+  
+    <li><a href="/tags/%E6%99%BA%E8%83%BD%E6%8C%87%E9%92%88/">智能指针</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2021 gotz9
+  
+</div>
+<div class="clearfix"></div></footer>
+  
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+<script src="/js/jquery.imagesloaded.min.js"></script>
+
+
+<script src="/js/gallery.js"></script>
+
+
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+<script>
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>
