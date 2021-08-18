@@ -1,0 +1,261 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  
+  <title>Red-black tree | Log Horizon</title>
+  <meta name="author" content="gotz9">
+  
+  <meta name="description" content="尝试手写一遍红黑树, 从本质上理解红黑树的各个特性.">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Red-black tree"/>
+  <meta property="og:site_name" content="Log Horizon"/>
+
+  
+    <meta property="og:image" content=""/>
+  
+
+  <link rel="shortcut icon" href="/favicon.png">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  <!--[if lt IE 9]><script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script><![endif]-->
+  
+
+<meta name="generator" content="Hexo 5.2.0"></head>
+
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Log Horizon</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div>
+</header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article id="post-red-black-tree" class="h-entry post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time class="dt-published" datetime="2021-08-18T16:37:01.000Z"><a href="/red-black-tree/">2021-08-19</a></time>
+      
+      
+  
+    <h1 class="p-name title" itemprop="headline name">Red-black tree</h1>
+  
+
+    </header>
+    <div class="e-content entry" itemprop="articleBody">
+      
+        <p>尝试手写一遍红黑树, 从本质上理解红黑树的各个特性.</p>
+<a id="more"></a>
+
+<p>理解红黑树, 首先要理解 B 树. 从大部分百科上都可以找到红黑树与 B 树联系的说明: 事实上, 红黑树与 4 阶 B 树 (或称 2-3-4 树) 是完全等价的实现.</p>
+<p>本文会有大量文本描述, 对于二叉树结构描述, 会有如下形式: <code>a-b-c</code>, 其代表一个 b 为父节点, a 为左节点, c 为右节点的一个二叉树结构.</p>
+<h3 id="B-tree"><a href="#B-tree" class="headerlink" title="B-tree"></a>B-tree</h3><p>首先是 B 树的特性:</p>
+<ul>
+<li>B 树的叶子始在同一层</li>
+<li>B 树的根或叶子的关键字数量至少为 1, 非根节点关键字至少为 <strong>ceil((M/2-1)</strong></li>
+</ul>
+<p>B 树自底向上插入, 总是会把新增的关键字插入到叶子节点中. 当遇到插入一个满叶子节点的情况, 会首先将叶子节点分裂为两个, 并将叶子节点分裂时的中间关键字插入父节点 (没有父节点则创建新的父节点), 此操作向上递归直到无需向上层插入节点.</p>
+<p>B 树的自底向上插入方式可以不破坏此特性. 发生删除操作结束, 则可能需要维护 B 树的特性. </p>
+<p>首先, B 树的删除会转移到叶子节点上执行, 当目标关键字在中间节点, 将此关键字替换为其前导或后继关键字, 此后删除叶子节点上的关键字.</p>
+<p>之后, 叶子节点上删除关键字后, 可能出现空节点, 导致不符合 B 树节点最少关键字数量的特性. 需要进行一些操作来维护特性:</p>
+<ol>
+<li>首先考虑空节点 A 从兄弟节点 B 挪用关键字, 具体操作为兄弟节点提供自己符合(大小)条件的关键字 Bi 放入父节点替代与节点在父节点的关联关键字 x, 将原关联关键字 x 移入 A.</li>
+<li>当无法从兄弟节点挪用关键字, 那么就考虑缩减父节点的子节点数量, 将空节点 A 与兄弟节点 B 在父节点的中间关键字 x 移入 B.</li>
+<li>如果出现 <code>2</code> 描述的情况, 需要检查父节点是否符合特性要求, 如果不符合, 父节点也需要进行挪用操作, 且需要注意根或叶子节点与其他节点的关键字限制不同.</li>
+<li>当根节点变为空节点则删除该节点并重新指定根节点.</li>
+</ol>
+<p>需要注意的是, 移动关键字并不只是移动关键字, 也需要注意关键字的关联子节点, 这其实就像是二叉树中的旋转操作.</p>
+<h3 id="红黑树"><a href="#红黑树" class="headerlink" title="红黑树"></a>红黑树</h3><p>说完 B 树的性质, 再来看看与红黑树等价的 4 阶 B 树. 4 阶 B 树的节点最多有 3 个关键字, 可以用层数为 2 的二叉树表示. 为了方便辨识出红黑树中的 B 树节点, 将 B 树节点转换的二叉树的根标识为黑色, 子节点则标识为红色.</p>
+<p><img src="/static/b-tree-node-2-binary-tree-nodes.jpg" alt=""></p>
+<p>于是, 根据 B 树的特性, 可以推导出红黑树的一些特性:</p>
+<ul>
+<li><p>红节点作为 B 树节点的 “非主要节点”, 只能关联其他 B 树节点的 “主要节点” (黑节点), 即: <code>每个红色节点必须有两个黑色的子节点</code>, 其实换种看法, 这就是限制一个 B 树节点的二叉树结构只能有 2 层. 如果出现红红相连, 显然它们所属 B 树节点转换的二叉结构已经超过了 2 层.</p>
+</li>
+<li><p>黑节点作为 B 树节点的代表, 根据 B 树叶子节点以及高度的性质, 可以推导出红黑树的特性: <code>从任一节点到其每个叶子的所有简单路径都包含相同数目的黑色节点</code></p>
+<p>红黑树为了防止两节点的 B 树节点的二叉树影响二叉树叶子节点数量的判定, 又规定了 <code>所有叶子都是黑色（叶子是NIL节点)</code>, 即根部到末端节点之后还有一个虚拟的黑色 NIL 节点, 其实也就说是将值为 NULL 的节点指针看作黑节点.</p>
+<p><img src="/static/red-node-with-black-nul-nodes-1.jpg" alt=""></p>
+<p><img src="/static/red-node-with-black-nul-nodes-2.jpg" alt=""></p>
+</li>
+</ul>
+<p>由于红黑树黑节点可以看作代表一个 B 树节点, 随便插入会破坏 B 树特性, 所以<code>每次插入都是红节点</code>, 之后进行平衡操作.</p>
+<p>对于红黑树的平衡操作, 基本可以参考 B 树的操作进行修改, 利用二叉树旋转, 对节点重着色来达到相同的效果.</p>
+<h4 id="插入"><a href="#插入" class="headerlink" title="插入"></a>插入</h4><p>首先, 找到二叉树叶子节点, 将数据作为红节点插入, 之后进行平衡. 我们将平衡操作归纳为针对一个 B 树节点的二叉结构的平衡.</p>
+<ul>
+<li><p>如果不是满二叉结构, 有三种情况: 仅有一个黑节点, 插入之后无需平衡; 是 <code>红-黑</code> 结构, 插入后是 红-黑-红 结构, 无需平衡; 插入后出现红节点与红节点相连的情况, 此时仅需该节点内部平衡, 通过旋转和重新着色, 将中间的节点改为黑节点, 原来的黑节点改为红节点即可.</p>
+<p><img src="/static/b-tree-node-balance.jpg" alt=""></p>
+</li>
+<li><p>如果是满二叉结构, 此时, 作为一个 4 阶 B 树节点已经无法容纳第 4 个节点, 此时显然需要做增加 B 树叶子节点分裂的操作. 直接将原结构的中间节点交给父节点, 即将中间的黑节点着色为红色, 即划归为父级 b tree 节点. 剩下的红节点各自分家变成独立的 B 树节点, 因此颜色会改为黑色, 变成 黑-红-黑 结构, 这样新增红节点就会变为其中任意一个黑节点的子节点. </p>
+<p><img src="/static/full-b-tree-node-insert.jpg" alt=""></p>
+<p>由于父节点增加了一个红节点, 需要在父节点上继续进行平衡操作. 如果插入操作最终创建出了新的根 (即图示中的 <code>main-node</code> 没有父节点), 仅是完成上面的操作, 会导致最顶层只有一个新增的红节点, 而没有代表 B 树结构的黑节点. 所以最终还需要检查二叉树的根部, 如果根是红色, 需要改为黑色. 这也是红黑树的特性的其中一条: <code>根是黑色</code>.</p>
+</li>
+</ul>
+<h4 id="删除"><a href="#删除" class="headerlink" title="删除"></a>删除</h4><p>删除方面, 同 B 树删除, 首先要将删除转移到 B 叶子节点, 即找到前导或后继进行替换, 然后删除 B 叶子上的前导或后继关键字.</p>
+<p>对于删除叶子节点关键字的操作, 可以有以下情况:</p>
+<ul>
+<li><p>删除红节点, 没有减少 B 树节点, 无需处理平衡问题.</p>
+</li>
+<li><p><code>红-黑-NIL</code> 结构, 删除黑节点, B 树结构关键字数量还没归零, 直接将剩下的红节点改为黑节点即可.</p>
+<p><img src="/static/delete-black-node-without-delete-b-tree-node.jpg" alt=""></p>
+<p>图示中, 删除 a 节点, 找到 a 的前导 b 节点, 将 b 的值写入 a 节点, 然后删除原 b 节点. 由于 b 节点代表的 B 树节点中还有一个节点 c, 所以直接将 c 涂黑以作为 B 树节点的代表.</p>
+</li>
+<li><p>单黑节点结构, 删除黑节点, 这样在 B 树结构路径上就缺少了一层叶子节点, 涉及 B 树节点平衡中的挪用节点操作 (参考 JDK TreeMap 的代码实现): </p>
+<ol>
+<li><p>找到他的兄弟节点. 这里需要一系列操作来保证删除目标的二叉兄弟节点是一个黑节点. 其中主要需要处理的是 <code>DEL-黑-红</code> 结构, 红节点属于删除目标父级, 而删除目标的兄弟节点是红节点的子节点, 所以需要进行一些旋转操作.</p>
+<p><img src="/static/get-black-brother-node.jpg" alt=""></p>
+</li>
+<li><p>之后, 开始考虑从兄弟 B 树节点获取关键字. 如果兄弟节点有(红)子节点, 可以对两者的父节点进行旋转将父节点移入删除目标, 兄弟节点的黑节点加入父节点.</p>
+<p><img src="/static/take-node-from-b-tree-node-brother.jpg" alt=""></p>
+<p>此处, 为了保证兄弟旋转后兄弟节点留有关键字, 需要保证兄弟黑节点的反方向侧有红节点, 为此可能需要进行一次旋转. 在着色方面, 二叉父节点会移入缺失黑节点的一侧, 所以也会被改为黑节点, 兄弟节点的主节点会顶替二叉父节点, 所以与原二叉父节点同色, 而兄弟节点移除了主节点则需要旋转后剩余的红节点变为黑节点.</p>
+</li>
+<li><p>如果兄弟 B 节点没有多余节点, 则将父节点与兄弟节点合并为一个 B 树节点, 将兄弟节点标红, 将父节点标黑. </p>
+<p><img src="/static/can-not-take-node-from-brother.jpg" alt=""></p>
+<p>这样的情况下, 实际上从 b 节点开始的 B 树结构空缺了一层, 需要从 b 节点的兄弟节点获取节点来填补这空缺的一层. 于是, b 节点开始执行 <code>从兄弟节点获取节点</code> 操作. 这样递归到根节点后, b 节点是根节点, 无法找到兄弟节点. 从根节点开始的整个 B 树都减少了一层, 但平衡没有被打破, 无需继续进行平衡操作, 递归结束.</p>
+</li>
+</ol>
+</li>
+</ul>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+  
+  <div class="tags">
+    <a href="/tags/B-%E6%A0%91/">B 树</a>, <a href="/tags/%E7%BA%A2%E9%BB%91%E6%A0%91/">红黑树</a>
+  </div>
+
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+<section id="comment">
+  <h1 class="title">留言</h1>
+
+  
+</section>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="搜索">
+    <input type="hidden" name="as_sitesearch" value="xh-gotz9.github.io">
+  </form>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">分类</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/CTF/BUUCTF/">BUUCTF</a><small>3</small></li>
+  
+    <li><a href="/categories/CTF/">CTF</a><small>3</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/Java/">Java</a><small>5</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/Rust/">Rust</a><small>1</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/">开发</a><small>7</small></li>
+  
+    <li><a href="/categories/%E6%9D%82%E6%96%87/">杂文</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">标签</h3>
+  <ul class="entry">
+  
+    <li><a href="/tags/B-%E6%A0%91/">B 树</a><small>1</small></li>
+  
+    <li><a href="/tags/GC/">GC</a><small>1</small></li>
+  
+    <li><a href="/tags/JVM/">JVM</a><small>2</small></li>
+  
+    <li><a href="/tags/Java-NIO/">Java NIO</a><small>1</small></li>
+  
+    <li><a href="/tags/Kryo/">Kryo</a><small>1</small></li>
+  
+    <li><a href="/tags/Linux/">Linux</a><small>1</small></li>
+  
+    <li><a href="/tags/PHP/">PHP</a><small>1</small></li>
+  
+    <li><a href="/tags/Rust/">Rust</a><small>1</small></li>
+  
+    <li><a href="/tags/SQLI/">SQLI</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring/">Spring</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring-Boot/">Spring Boot</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring-Security/">Spring Security</a><small>2</small></li>
+  
+    <li><a href="/tags/Unserialize/">Unserialize</a><small>1</small></li>
+  
+    <li><a href="/tags/protobuf/">protobuf</a><small>1</small></li>
+  
+    <li><a href="/tags/writeup/">writeup</a><small>3</small></li>
+  
+    <li><a href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/">多线程</a><small>2</small></li>
+  
+    <li><a href="/tags/%E5%BA%8F%E5%88%97%E5%8C%96/">序列化</a><small>1</small></li>
+  
+    <li><a href="/tags/%E6%99%BA%E8%83%BD%E6%8C%87%E9%92%88/">智能指针</a><small>1</small></li>
+  
+    <li><a href="/tags/%E7%BA%A2%E9%BB%91%E6%A0%91/">红黑树</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2021 gotz9
+  
+</div>
+<div class="clearfix"></div></footer>
+  
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+<script src="/js/jquery.imagesloaded.min.js"></script>
+
+
+<script src="/js/gallery.js"></script>
+
+
+
+
+
+</body>
+</html>
