@@ -1,0 +1,279 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  
+  <title>BitTorrent 简述 | Log Horizon</title>
+  <meta name="author" content="gotz9">
+  
+  <meta name="description" content="之前写 Fraux 和 dht_rs 的时候看过一些 BitTorrent 协议的文档, 主要是 BEP-3 的基础协议, 以及 BEP-5 的 DHT 设计. 博客好久没更新的感觉, 简单整理一部分放上来吧.
+本篇参考资料均源自 bittorrent.org 的 BEP 文档, BEP 的文档的索引在 BEP-0.">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="BitTorrent 简述"/>
+  <meta property="og:site_name" content="Log Horizon"/>
+
+  
+    <meta property="og:image" content=""/>
+  
+
+  <link rel="shortcut icon" href="/favicon.png">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  <!--[if lt IE 9]><script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script><![endif]-->
+  
+
+<meta name="generator" content="Hexo 5.2.0"></head>
+
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Log Horizon</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div>
+</header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article id="post-bittorrent-protocol" class="h-entry post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time class="dt-published" datetime="2021-09-20T06:32:23.000Z"><a href="/bittorrent-protocol/">2021-09-20</a></time>
+      
+      
+  
+    <h1 class="p-name title" itemprop="headline name">BitTorrent 简述</h1>
+  
+
+    </header>
+    <div class="e-content entry" itemprop="articleBody">
+      
+        <p>之前写 Fraux 和 dht_rs 的时候看过一些 BitTorrent 协议的文档, 主要是 BEP-3 的基础协议, 以及 BEP-5 的 DHT 设计. 博客好久没更新的感觉, 简单整理一部分放上来吧.</p>
+<p>本篇参考资料均源自 bittorrent.org 的 BEP 文档, BEP 的文档的索引在 <a target="_blank" rel="noopener" href="http://bittorrent.org/beps/bep_0000.html">BEP-0</a>.</p>
+<a id="more"></a>
+
+<h2 id="文件"><a href="#文件" class="headerlink" title="文件"></a>文件</h2><p>首先, BitTorrent 的目标是在网络中分发文件. 由于它的设计, 下载端可以不直接从原始文件分发端下载数据, 转而从网络中各个已经下载了该文件的下载端获取数据. 有种 “人人为我. 我为人人” 的味道, 大家互帮互助, 让所有人都能下载到想要的文件. 并且, 这样一来, 对缓解服务器的压力也有相当大的帮助. 对于经费不多, 网络资源受限的服务器来说, 上传带宽通常是无法达到下载带宽的, 但由多个 “服务器” 角色的设备来提供数据, 就可以把上传带宽相加, 最大程度利用下载方的下载带宽.</p>
+<h3 id="torrent-文件"><a href="#torrent-文件" class="headerlink" title="torrent 文件"></a>torrent 文件</h3><p>人们通过 BitTorrent 进行下载文件, 也是需要一些标识的, 就如 HTTP 下载需要提供文件的 URL. URL 访问静态资源是通过命名来确定文件的, 实际上也可以理解为文件系统限定. 但 BitTorrent 由于它趋向于分布式的特性, 并不能保证命名的唯一性, 并且针对它分片传输的特性, 需要有额外的文件描述信息, 即 BEP-3 中提到的 <code>metainfo</code>.</p>
+<p>torrent 文件存储的其实就是 <code>metainfo</code>. <code>metainfo</code> 是根据 BEP-3 中描述的 <code>bencoding</code> 格式构造的数据.</p>
+<h4 id="bencoding"><a href="#bencoding" class="headerlink" title="bencoding"></a>bencoding</h4><p>这是在 BitTorrent 协议中常用的数据编码方式.</p>
+<blockquote>
+<p>Strings are length-prefixed base ten followed by a colon and the string. For example 4:spam corresponds to ‘spam’.</p>
+<p>Integers are represented by an ‘i’ followed by the number in base 10 followed by an ‘e’. For example i3e corresponds to 3 and i-3e corresponds to -3. Integers have no size limitation. i-0e is invalid. All encodings with a leading zero, such as i03e, are invalid, other than i0e, which of course corresponds to 0.</p>
+<p>Lists are encoded as an ‘l’ followed by their elements (also bencoded) followed by an ‘e’. For example l4:spam4:eggse corresponds to [‘spam’, ‘eggs’].</p>
+<p>Dictionaries are encoded as a ‘d’ followed by a list of alternating keys and their corresponding values followed by an ‘e’. For example, d3:cow3:moo4:spam4:eggse corresponds to {‘cow’: ‘moo’, ‘spam’: ‘eggs’} and d4:spaml1:a1:bee corresponds to {‘spam’: [‘a’, ‘b’]}. Keys must be strings and appear in sorted order (sorted as raw strings, not alphanumerics).</p>
+</blockquote>
+<ul>
+<li>string, 字符串会带有长度前缀和冒号, 例如 <code>3:abc</code>.</li>
+<li>integer, 整数会被 <code>i</code> 和 <code>e</code> 字符包裹, 例如: <code>i3e</code>, <code>i-3e</code>. <code>i-0e</code> 是非法表示, 数值前添 0 也是非法表示, 例如 <code>i03e</code>, <code>i0e</code> 除外, 显然它只能这么写了.</li>
+<li>list, 列表以字符 <code>l</code> 开始, 以 <code>e</code> 结束. 中间则是 list 的元素, 也是 bencoding 编码数据, 例如 <code>l3:abc4:defge</code> 表示列表 <code>[&#39;abc&#39;, &#39;defg&#39;]</code>.</li>
+<li>dictionary, 字典以字符 <code>d</code> 开始, <code>e</code> 结束, 中间的元素列表是交替出现的 key - value. 例如, <code>d1:ai3e1:bi4ee</code> 就是 <code>&#123; a: 3, b: 4&#125;</code>. key 必须是 string, 且 <strong>key 需要以 raw string 的形式进行排序</strong>.</li>
+</ul>
+<p>注:</p>
+<ol>
+<li>从实际 torrent 文件的数据解析来看, string 的长度前缀是字节长度, 非字符长度.</li>
+<li>dictionary 由于确定了 key 的排序规则, 所以同样的数据只会输出相同的 bencoding 数据.</li>
+<li><code>dictionary</code> 本文后续简称 <code>dict</code></li>
+</ol>
+<h4 id="metainfo"><a href="#metainfo" class="headerlink" title="metainfo"></a>metainfo</h4><p>关于 <code>metainfo</code> 的数据结构, 这是了解 BitTorrent 协议的一把关键钥匙. BitTorrent 协议就是为了传输文件而生的 (对, 但不完全对?), 它的协议都会围绕文件, 也就是 <code>metainfo</code> 进行设计.</p>
+<p>这里有个前置要求, <code>metainfo</code> 内的 <code>string</code> 数据统一采用 <code>UTF-8</code> 编码.</p>
+<p>首先, 它的内部是一个 dict, 记录了两个数据: <code>announce</code> 和 <code>info</code>. <code>announce</code> 主要记录了 <code>tracker</code> 的 URL, 这部分与后续的传输相关, 暂且带过. 重点是 <code>info</code> 的数据.</p>
+<p><code>info</code> 是一个 dict, 它描述了文件的关键信息:</p>
+<table>
+<thead>
+<tr>
+<th align="center">key</th>
+<th align="left">description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><code>name</code></td>
+<td align="left">描述了下载文件时建议使用的文件名或目录名 (仅仅是建议)</td>
+</tr>
+<tr>
+<td align="center"><code>piece length</code> (中间是空格)</td>
+<td align="left">描述了每个数据块(piece)的数据长度, 文件会按这个长度进行分块. 为了达到传输目的, 文件都被拆分为固定的数据块, 除了最后一个数据块可能会被截断. <code>piece length</code> 几乎总是 2 的指数幂, 通常是 2^18 = 256K (BitTorrent 3.2 之前默认使用 2^20 = 1M 作为块长度)</td>
+</tr>
+<tr>
+<td align="center"><code>pieces</code></td>
+<td align="left">指向一个 string 数据, 它的长度是 20 的倍数. 它应该按每块 20 字节来划分, 每块数据都是对应索引位置的文件块的  SHA-1 hash 值</td>
+</tr>
+<tr>
+<td align="center"><code>length</code></td>
+<td align="left">不与 <code>files</code> 共存. 用于传输单个文件的 torrent 文件, 表示这个文件的字节长度</td>
+</tr>
+<tr>
+<td align="center"><code>files</code></td>
+<td align="left">不与 <code>length</code> 共存. 用于传输多个文件的 torrent 文件, 是一个存储 <code>dict</code> 的 <code>list</code>, 在其存储的 <code>dict</code> 中, 有两个 key: <code>path</code>, 表示文件的路径; <code>length</code>, 文件的字节长度;</td>
+</tr>
+<tr>
+<td align="center"><code>name</code></td>
+<td align="left">在单文件情况下, 表示文件的名字. 多文件时, 则是最外层目录的名字</td>
+</tr>
+</tbody></table>
+<h5 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h5><ol>
+<li>一个 torrent 能代表多个文件, 通过 <code>files</code> 字段的数据进行详细描述.</li>
+<li>看到 <code>pieces</code>, <code>piece length</code> 大概会发觉, BitTorrent 会对文件进行分片传输 (虽然日常使用大概都知道了). <code>pieces</code> 记录了文件各个分片的 SHA-1 hash. 下载端可以进行验证, 以保证传输数据的正确性.</li>
+</ol>
+<h5 id="延展"><a href="#延展" class="headerlink" title="延展"></a>延展</h5><p><code>info</code> 数据实际上还是相对比较大的, 单是 1 GiB 的文件, 它按照长度 2^18 的分片方式处理下来的 hash 数据就能达到 20*2^18 字节, 即 5 MiB. 如果拿着这样的数据直接使用, 对性能来说是一个灾难. 所以, BitTorrent 更多的是使用对 <code>info</code> 的 dict 进行 SHA-1 hash 得到的 hash 值, 被称为 <code>info_hash</code>. 它在 tracker, DHT 中均有使用.</p>
+<p>也是因为会使用 <code>info_hash</code> 的原因, 所以才会特别要求 <code>dict</code> 的表示必须唯一.</p>
+<h2 id="传输"><a href="#传输" class="headerlink" title="传输"></a>传输</h2><h3 id="Tracker"><a href="#Tracker" class="headerlink" title="Tracker"></a>Tracker</h3><p>原始文档见 <a target="_blank" rel="noopener" href="http://bittorrent.org/beps/bep_0003.html#trackers">BEP-3.trackers</a>.</p>
+<p>tracker 协议属于 BitTorrent 协议族中的一部分, 它规划了一个以 tracker 作为中心的星状拓扑架构网络组成.</p>
+<p>简单看来 tracker 协议有两种角色: <code>peer</code>, <code>tracker</code>.</p>
+<ul>
+<li><code>peer</code> 可以理解为 BitTorrent 协议的应用/服务, 它们在网络中对等, 可以互相传输文件数据.</li>
+<li><code>tracker</code> 则可以理解为现在分布式架构中的注册中心, <code>peer</code> 将自己注册到 <code>tracker</code>.</li>
+</ul>
+<h4 id="传输流程"><a href="#传输流程" class="headerlink" title="传输流程"></a>传输流程</h4><p>关于协议的细节, 可见上述 <code>BEP-3.trackers</code> 原始文档. 此处仅作简要概述.</p>
+<p>这里从 peer 需要下载一个文件开始:</p>
+<ol>
+<li><code>peer</code> 拿到一个 torrent 文件, 它解析完数据, 向种子中描述的 <code>tracker</code><br>询问, 获取其他拥有此文件的 <code>peer</code>.</li>
+<li>通过 <code>peer</code> 传输协议从远端 peer 下载数据. (详见 <a target="_blank" rel="noopener" href="https://bittorrent.org/beps/bep_0003.html#peer-protocol">BEP-3.peer_protocol</a>)</li>
+<li>在文件下载过程中, peer 会向 tracker 通报自己的下载进度情况. 之后, peer 可能会被 tracker 提供给其他的 peer 作为下载文件的源.</li>
+</ol>
+<h4 id="小结-1"><a href="#小结-1" class="headerlink" title="小结"></a>小结</h4><p>在协议中, tracker 作为一个分布式服务注册中心, 非常重要, 一旦停止服务, 使用它的 peer 就不能正常接入传输网络. trakcer 的分裂也是一大问题, tracker 之间并未进行数据同步等操作, 是独立的个体. 若是文件分发时的时候没有提供 tracker 或 tracker 停止服务, peer 只能通过在自己记录的 tracker 中寻找其他的 peer, 有可能因为没有与分发端 peer 使用相同的 tracker, 无法找到可下载的数据源.</p>
+<p>所以, BitTorrent 在后来引入了 DHT 协议去中心化.</p>
+<h3 id="DHT"><a href="#DHT" class="headerlink" title="DHT"></a>DHT</h3><p><code>to be continued...</code></p>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+  
+  <div class="tags">
+    <a href="/tags/BitTorrent/">BitTorrent</a>
+  </div>
+
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+<section id="comment">
+  <h1 class="title">留言</h1>
+
+  
+</section>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="搜索">
+    <input type="hidden" name="as_sitesearch" value="xh-gotz9.github.io">
+  </form>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">分类</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/CTF/BUUCTF/">BUUCTF</a><small>3</small></li>
+  
+    <li><a href="/categories/CTF/">CTF</a><small>3</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/Java/">Java</a><small>5</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/Rust/">Rust</a><small>1</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/">开发</a><small>7</small></li>
+  
+    <li><a href="/categories/%E6%9D%82%E6%96%87/">杂文</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">标签</h3>
+  <ul class="entry">
+  
+    <li><a href="/tags/B-%E6%A0%91/">B 树</a><small>1</small></li>
+  
+    <li><a href="/tags/BitTorrent/">BitTorrent</a><small>1</small></li>
+  
+    <li><a href="/tags/GC/">GC</a><small>1</small></li>
+  
+    <li><a href="/tags/JVM/">JVM</a><small>2</small></li>
+  
+    <li><a href="/tags/Java-NIO/">Java NIO</a><small>1</small></li>
+  
+    <li><a href="/tags/Kryo/">Kryo</a><small>1</small></li>
+  
+    <li><a href="/tags/Linux/">Linux</a><small>1</small></li>
+  
+    <li><a href="/tags/PHP/">PHP</a><small>1</small></li>
+  
+    <li><a href="/tags/Rust/">Rust</a><small>1</small></li>
+  
+    <li><a href="/tags/SQLI/">SQLI</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring/">Spring</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring-Boot/">Spring Boot</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring-Security/">Spring Security</a><small>2</small></li>
+  
+    <li><a href="/tags/Unserialize/">Unserialize</a><small>1</small></li>
+  
+    <li><a href="/tags/protobuf/">protobuf</a><small>1</small></li>
+  
+    <li><a href="/tags/writeup/">writeup</a><small>3</small></li>
+  
+    <li><a href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/">多线程</a><small>2</small></li>
+  
+    <li><a href="/tags/%E5%BA%8F%E5%88%97%E5%8C%96/">序列化</a><small>1</small></li>
+  
+    <li><a href="/tags/%E6%99%BA%E8%83%BD%E6%8C%87%E9%92%88/">智能指针</a><small>1</small></li>
+  
+    <li><a href="/tags/%E7%BA%A2%E9%BB%91%E6%A0%91/">红黑树</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2021 gotz9
+  
+</div>
+<div class="clearfix"></div></footer>
+  
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+<script src="/js/jquery.imagesloaded.min.js"></script>
+
+
+<script src="/js/gallery.js"></script>
+
+
+
+
+
+</body>
+</html>
