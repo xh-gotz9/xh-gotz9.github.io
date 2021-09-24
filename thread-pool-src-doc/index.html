@@ -1,0 +1,230 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  
+  <title>ThreadPoolExecutor doc | Log Horizon</title>
+  <meta name="author" content="gotz9">
+  
+  <meta name="description" content="线程池源码学习. 要搞面试, 最近还是多巩固一下基础… 本篇主要是针对 ThreadPoolExecutor, javadoc 讲得挺清楚的, 直接就做一遍翻译吧…">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="ThreadPoolExecutor doc"/>
+  <meta property="og:site_name" content="Log Horizon"/>
+
+  
+    <meta property="og:image" content=""/>
+  
+
+  <link rel="shortcut icon" href="/favicon.png">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  <!--[if lt IE 9]><script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script><![endif]-->
+  
+
+<meta name="generator" content="Hexo 5.2.0"></head>
+
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Log Horizon</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div>
+</header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article id="post-thread-pool-src-doc" class="h-entry post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time class="dt-published" datetime="2021-09-23T06:32:23.000Z"><a href="/thread-pool-src-doc/">2021-09-23</a></time>
+      
+      
+  
+    <h1 class="p-name title" itemprop="headline name">ThreadPoolExecutor doc</h1>
+  
+
+    </header>
+    <div class="e-content entry" itemprop="articleBody">
+      
+        <p>线程池源码学习. 要搞面试, 最近还是多巩固一下基础… 本篇主要是针对 <code>ThreadPoolExecutor</code>, javadoc 讲得挺清楚的, 直接就做一遍翻译吧…</p>
+<a id="more"></a>
+
+<p>线程池解决了两个问题: 他们通过减少每个任务的调用开销来实现执行大量异步任务时的性能优化, 并且他们提供了一种限制和管理资源的方法, 包含线程在执行一组任务时的消耗情况. 每个 ThreadPool 线程池也会维护一些基本的统计信息, 例如完成的 task 数量.</p>
+<p>为了更好的泛用性, ThreadPoolExecutor 提供了许多可调整的参数和扩展接口. 开发者也可以使用 Executors 预定义的一些较通用的 ThreadPoolExecutor. 如果需要进行手动的配置和细致的调整, 可以参考以下手册:</p>
+<h2 id="Core-and-maximum-pool-sizes"><a href="#Core-and-maximum-pool-sizes" class="headerlink" title="Core and maximum pool sizes"></a>Core and maximum pool sizes</h2><p>一个 ThreadPoolExecutor 将会通过 <code>corePoolSize</code> 和 <code>maximumPoolSize</code> 自动调整线程池的大小. 当一个新任务通过 <code>execute</code> 提交到线程池, 且当前线程池中运行的线程小于 <code>corePoolSize</code>, 线程池将创建一个新的线程来处理这个请求, 即使其他 worker 线程处于闲置状态. 如果当前线程数大于 <code>corePoolSize</code> 但是小于 <code>maximumPoolSize</code>, 且 task queue 满了的情况下, 线程池也会创建新的线程来执行任务. 将 <code>corePoolSize</code> 与 <code>maximumPoolSize</code> 设置为相等, 你可以得到一个固定线程数量的线程池. 将 <code>maximumPoolSize</code> 设置为一个实际上可以看作无限制的数, 例如 Integer.MAX_VALUE, 线程池可以容纳任意数量的 task (注: 显然, 代价是大量 thread 的系统资源占用). 通常 <code>corePoolSize</code> 和 <code>maximumPoolSize</code> 会在构造对象时进行设置, 但它们也可以在运行期间动态调整.</p>
+<h2 id="On-demand-construction"><a href="#On-demand-construction" class="headerlink" title="On-demand construction"></a>On-demand construction</h2><p>默认情况下, core thread 也只会在有新任务时才会进行创建和启动, 但这一默认行为可以通过动态调用 <code>prestartCoreThread</code> 或者 <code>prestartAllCoreThreads</code> 进行覆盖. 你可能会在使用一个非空 task 队列创建 ThreadPoolExector 的时候做这件事.</p>
+<h2 id="Creating-new-threads"><a href="#Creating-new-threads" class="headerlink" title="Creating new threads"></a>Creating new threads</h2><p>新线程是通过 <code>ThreadFactory</code> 创建的. 如果没有指定, 会使用默认的 <code>Executors.defaultThreadFactory</code>, 它创建的线程都会在同一 ThreadGroup, 并且同为 <code>NORM_PRIORITY</code> 优先级的非守护进程. 通过使用其他的 ThreadFactory, 可以对创建的线程的名字, 线程组, 优先级, 是否守护进程等进行修改. 如果 ThreadFactory 创建 thread 失败并返回 null, executor 将继续工作, 但可能没办法处理任何 task. Threads should possess the “modifyThread” RuntimePermission (?). 如果 worker 线程或者其他线程调用线程池但没有执行这个权限, 服务可能会退化: 配置的修改无法及时生效, 关闭线程池可能一直处于可以关闭但未完成的状态. (权限问题, 具体需要了解 JVM 的权限机制)</p>
+<blockquote>
+<p>注: 从 <a target="_blank" rel="noopener" href="https://docs.oracle.com/javase/8/docs/technotes/guides/security/permissions.html">官方文档</a> 了解到, <code>modifyThread</code> 允许以下行为:</p>
+<p>Modification of threads, e.g., via calls to Thread interrupt, stop, suspend, resume, setDaemon, setPriority, setName and setUncaughtExceptionHandler methods</p>
+</blockquote>
+<h2 id="Keep-alive-times"><a href="#Keep-alive-times" class="headerlink" title="Keep-alive times"></a>Keep-alive times</h2><p>如果线程池当前线程数量大于 <code>corePoolSize</code>, 多余的线程将会在他们进入闲置状态超过 <code>keepAliveTime</code> 后被终止. 这提供了让线程池在不活跃期间减少资源消耗的途径. 如果线程池在之后开始活跃, 又会创建新的线程. 这一参数也是可以动态调整的, 使用 <code>Long.MAX_VALUE</code>, <code>TimeUnit.NANOSECONDS</code> 可以有效地禁用闲置线程自动终止. 默认情况下, keep-alive 策略只是用于 <code>corePoolSize</code> 范围之外的 thread, 但 <code>allowCoreThreadTimeOut</code> 可以设置允许超时策略应用到 core thread, 只要 keepAliveTime 的值不为 0.</p>
+<h2 id="Queuing"><a href="#Queuing" class="headerlink" title="Queuing"></a>Queuing</h2><p>任何 BlockingQueue 都可以用于传输和持有外部提交的 task. queue 的使用会与 pool size 交互: 如果当前线程数小于 <code>corePoolSize</code>, executor 总是创建新的线程来处理 task, 而不会将它置入 queue. 当运行线程数量大于等于 <code>corePoolSize</code>, 那么 executor 会倾向于将 task 置入 queue, 而不是创建更多的线程. 如果 task 无法置入 queue (queue 满队列状态), 则继续创建新线程执行 task, 除非线程数已经达到 <code>maximumPoolSize</code>, 这个时候, task 会被拒绝.</p>
+<p>queue 一般有三种策略:</p>
+<ul>
+<li><p>直接交接, 一个较好的默认选择是 <code>SynchronousQueue</code>, 它将 task 交接给 thread 而无需持有它们. 如果没有一个 thread 能够立即处理 task, task 的 enqueue 操作会失败, 所以之后会尝试创建一个新的 thread 来执行 task. 这一策略可以避免 task 在队列中卡住, 如果批量执行有功能相关性的 task, 这是一个适合的策略. 为了能够确保策略的实施, 还需要 <code>maximumPoolSize</code> 不进行过多的限制, 以避免 task 被拒绝执行. 但这样一来, 也可能出现短期内 task 量过大导致线程无限增长的问题.</p>
+</li>
+<li><p>无界队列. 使用一个无上限的队列 (例如没有设置容量的 <code>LinkedBlockingQueue</code>) 会让新的, 暂时无法被 core thread 执行的任务会进入 queue 排队. 因此, 不会创建多于 <code>corePoolSize</code> 的线程. 这样一来, <code>maximumPoolSize</code> 不会产生任何效果. 这个策略比较适合 task 较为独立, 不会出现并发任务间结果的依赖, 不会影响其他 task 执行的情况, 例如一个 web page server 中. 虽然这一策略会解决 task 短期爆发的带来的线程压力, 但 task 队列不停地增长, 也会有任务排队时间过长, 服务响应变慢的问题.</p>
+</li>
+<li><p>有限队列. 一个有限容量的队列 (例如 <code>ArrayBlockingQueue</code>) 配合有限的 <code>maximumPoolSize</code> 可以防止资源用尽, 但更难以调整和控制. queue 的长度和 thread 的最大量间需要有互相的取舍: 使用较大容量的 queue 和较小的 pool 容量可以优化 CPU 占用, 系统资源以及线程上下文切换开销, 但会减少 task 的吞吐量. 如果 task 经常阻塞 (例如 IO 操作), 系统可能能够调度比你预计更多的线程 (内核调用阻塞的线程不会参与时间片分配). 使用小容量 queue 通常来说需要较大的 pool 容量, 这样会更多地占用 CPU, 但更极端的情况下还是会出现被拒绝的 task, 在任务量达到如此规模的情况下, 吞吐量实际上也是降低了.</p>
+</li>
+</ul>
+<h2 id="Rejected-tasks"><a href="#Rejected-tasks" class="headerlink" title="Rejected tasks"></a>Rejected tasks</h2><p>在 executor 被关闭, 或者在上文所述达到了 queue 已满且线程数达到上限的情况下, 向 executor 提交的 task 会被拒绝. 这时 executor 会调用 <code>RejectedExecutionHandler#rejectedExecution(Runnable, ThreadPoolExecutor)</code> 方法尝试进行后续处理. ThreadPoolExecutor 提供了 4 种现成的处理策略:</p>
+<ul>
+<li><code>ThreadPoolExecutor.AbortPolicy</code>, 默认策略, 会抛出 runtime exception <code>RejectedExecutionException</code>.</li>
+<li><code>ThreadPoolExecutor.CallerRunsPolicy</code>, 若 executor 没有停止, 提交任务的线程会自行执行 task.</li>
+<li><code>ThreadPoolExecutor.DiscardPolicy</code>, 不作处理, 丢弃 task.</li>
+<li><code>ThreadPoolExecutor.DiscardOldestPolicy</code>, 若 executor 没有停止, 丢弃当前队列中的 header 节点的 task, 将提交的 task 置入 queue. 这一策略的实现又重新调用了 execute, 如果失败了, 则会继续重试.</li>
+</ul>
+<p>在此之外, 也可以使用其他的 RejectedExecutionHandler 实现.</p>
+<h2 id="Hook-methods"><a href="#Hook-methods" class="headerlink" title="Hook methods"></a>Hook methods</h2><p>ThreadPoolExecutor 类提供了 <code>beforeExecute(Thread, Runnable)</code> 和 <code>afterExecute(Runnable, Throwable)</code> 钩子函数可供继承重写. 它们分别在 task 执行前后进行调用. 这可以用来操作执行环境, 例如, 重置 ThreadLocal, 进行数据统计或者添加日志. 此外, <code>terminated</code> 方法会在 executor 完全终止后执行, 可以重写来进行一些额外的终止处理.</p>
+<p>如果钩子或回调抛出了异常, 内部的 worker thread 可能会执行失败并终止.</p>
+<h2 id="Queue-maintenance"><a href="#Queue-maintenance" class="headerlink" title="Queue maintenance"></a>Queue maintenance</h2><p><code>getQueue()</code> 方法允许获取 executor 内部的 queue 用于监控和 debug. 不推荐讲此方法用于其他目的. executor 提供了 <code>remove</code> 和 <code>purge</code> 可以用于清理被取消的 task.</p>
+<h2 id="Finalization"><a href="#Finalization" class="headerlink" title="Finalization"></a>Finalization</h2><p>当一个 executor 不再被引用, 并且没有剩余线程, 将会被自动关闭. 如果想确保在忘记调用 <code>shutdown</code> 的情况下也能自动回收 executor, 那必须通过设置 keepAliveTime 以及设置 core thread 数量或设置 <code>allowCoreThreadTimeOut</code> 来确保内部的所有线程都会自动关闭.</p>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+  
+  <div class="tags">
+    <a href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/">多线程</a>, <a href="/tags/%E7%BA%BF%E7%A8%8B%E6%B1%A0/">线程池</a>
+  </div>
+
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+<section id="comment">
+  <h1 class="title">留言</h1>
+
+  
+</section>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="搜索">
+    <input type="hidden" name="as_sitesearch" value="xh-gotz9.github.io">
+  </form>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">分类</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/CTF/BUUCTF/">BUUCTF</a><small>3</small></li>
+  
+    <li><a href="/categories/CTF/">CTF</a><small>3</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/Java/">Java</a><small>5</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/Rust/">Rust</a><small>1</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/">开发</a><small>7</small></li>
+  
+    <li><a href="/categories/%E6%9D%82%E6%96%87/">杂文</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">标签</h3>
+  <ul class="entry">
+  
+    <li><a href="/tags/B-%E6%A0%91/">B 树</a><small>1</small></li>
+  
+    <li><a href="/tags/BitTorrent/">BitTorrent</a><small>1</small></li>
+  
+    <li><a href="/tags/GC/">GC</a><small>1</small></li>
+  
+    <li><a href="/tags/JVM/">JVM</a><small>2</small></li>
+  
+    <li><a href="/tags/Java-NIO/">Java NIO</a><small>1</small></li>
+  
+    <li><a href="/tags/Kryo/">Kryo</a><small>1</small></li>
+  
+    <li><a href="/tags/Linux/">Linux</a><small>1</small></li>
+  
+    <li><a href="/tags/PHP/">PHP</a><small>1</small></li>
+  
+    <li><a href="/tags/Rust/">Rust</a><small>1</small></li>
+  
+    <li><a href="/tags/SQLI/">SQLI</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring/">Spring</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring-Boot/">Spring Boot</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring-Security/">Spring Security</a><small>2</small></li>
+  
+    <li><a href="/tags/Unserialize/">Unserialize</a><small>1</small></li>
+  
+    <li><a href="/tags/protobuf/">protobuf</a><small>1</small></li>
+  
+    <li><a href="/tags/writeup/">writeup</a><small>3</small></li>
+  
+    <li><a href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/">多线程</a><small>3</small></li>
+  
+    <li><a href="/tags/%E5%BA%8F%E5%88%97%E5%8C%96/">序列化</a><small>1</small></li>
+  
+    <li><a href="/tags/%E6%99%BA%E8%83%BD%E6%8C%87%E9%92%88/">智能指针</a><small>1</small></li>
+  
+    <li><a href="/tags/%E7%BA%A2%E9%BB%91%E6%A0%91/">红黑树</a><small>1</small></li>
+  
+    <li><a href="/tags/%E7%BA%BF%E7%A8%8B%E6%B1%A0/">线程池</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2021 gotz9
+  
+</div>
+<div class="clearfix"></div></footer>
+  
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+<script src="/js/jquery.imagesloaded.min.js"></script>
+
+
+<script src="/js/gallery.js"></script>
+
+
+
+
+
+</body>
+</html>
