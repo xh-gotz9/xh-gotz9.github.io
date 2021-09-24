@@ -6,7 +6,10 @@
   <title>ThreadPoolExecutor doc | Log Horizon</title>
   <meta name="author" content="gotz9">
   
-  <meta name="description" content="线程池源码学习. 要搞面试, 最近还是多巩固一下基础… 本篇主要是针对 ThreadPoolExecutor, javadoc 讲得挺清楚的, 直接就做一遍翻译吧…">
+  <meta name="description" content="线程池源码学习. 要搞面试, 最近还是多巩固一下基础… 本篇主要是针对 ThreadPoolExecutor, javadoc 讲得挺清楚的, 直接就做一遍翻译吧…
+更新记录:
+
+2021-9-25: 补充流程图">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 
@@ -63,6 +66,10 @@
     <div class="e-content entry" itemprop="articleBody">
       
         <p>线程池源码学习. 要搞面试, 最近还是多巩固一下基础… 本篇主要是针对 <code>ThreadPoolExecutor</code>, javadoc 讲得挺清楚的, 直接就做一遍翻译吧…</p>
+<p>更新记录:</p>
+<ul>
+<li>2021-9-25: 补充流程图</li>
+</ul>
 <a id="more"></a>
 
 <p>线程池解决了两个问题: 他们通过减少每个任务的调用开销来实现执行大量异步任务时的性能优化, 并且他们提供了一种限制和管理资源的方法, 包含线程在执行一组任务时的消耗情况. 每个 ThreadPool 线程池也会维护一些基本的统计信息, 例如完成的 task 数量.</p>
@@ -97,6 +104,7 @@
 <p>如果钩子或回调抛出了异常, 内部的 worker thread 可能会执行失败并终止.</p>
 <h2 id="Queue-maintenance"><a href="#Queue-maintenance" class="headerlink" title="Queue maintenance"></a>Queue maintenance</h2><p><code>getQueue()</code> 方法允许获取 executor 内部的 queue 用于监控和 debug. 不推荐讲此方法用于其他目的. executor 提供了 <code>remove</code> 和 <code>purge</code> 可以用于清理被取消的 task.</p>
 <h2 id="Finalization"><a href="#Finalization" class="headerlink" title="Finalization"></a>Finalization</h2><p>当一个 executor 不再被引用, 并且没有剩余线程, 将会被自动关闭. 如果想确保在忘记调用 <code>shutdown</code> 的情况下也能自动回收 executor, 那必须通过设置 keepAliveTime 以及设置 core thread 数量或设置 <code>allowCoreThreadTimeOut</code> 来确保内部的所有线程都会自动关闭.</p>
+<h2 id="流程图"><a href="#流程图" class="headerlink" title="流程图"></a>流程图</h2><p><img src="/static/thread-pool-executor.png" alt=""></p>
 
       
     </div>
