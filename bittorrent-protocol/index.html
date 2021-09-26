@@ -90,7 +90,7 @@
 <li><code>dictionary</code> 本文后续简称 <code>dict</code></li>
 </ol>
 <h4 id="metainfo"><a href="#metainfo" class="headerlink" title="metainfo"></a>metainfo</h4><p>关于 <code>metainfo</code> 的数据结构, 这是了解 BitTorrent 协议的一把关键钥匙. BitTorrent 协议就是为了传输文件而生的 (对, 但不完全对?), 它的协议都会围绕文件, 也就是 <code>metainfo</code> 进行设计.</p>
-<p>这里有个前置要求, <code>metainfo</code> 内的 <code>string</code> 数据统一采用 <code>UTF-8</code> 编码.</p>
+<p>这里有个前置要求, <code>metainfo</code> 内的文本数据统一采用 <code>UTF-8</code> 编码.</p>
 <p>首先, 它的内部是一个 dict, 记录了两个数据: <code>announce</code> 和 <code>info</code>. <code>announce</code> 主要记录了 <code>tracker</code> 的 URL, 这部分与后续的传输相关, 暂且带过. 重点是 <code>info</code> 的数据.</p>
 <p><code>info</code> 是一个 dict, 它描述了文件的关键信息:</p>
 <table>
