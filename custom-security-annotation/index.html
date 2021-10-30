@@ -76,14 +76,14 @@
 <h2 id="CustomizedAccessDecisionVoter"><a href="#CustomizedAccessDecisionVoter" class="headerlink" title="CustomizedAccessDecisionVoter"></a>CustomizedAccessDecisionVoter</h2><p>如果有了新的元数据配置规则, 自然要有能够解析元数据规则的角色. 当然你也可以考虑让 MetadataSource 的解析结果兼容默认的规则.</p>
 <p>可以参考 <code>Jsr250Voter</code> 的方式, SecurityMetadataSource 提供自定义的 <code>ConfigAttribute</code> 类型, voter 通过类型检查是否支持鉴权. 当然也可以通过 <code>ConfigAttribute</code> 获取到的字符串表达式来筛选, 具体看个人需求.</p>
 <h2 id="Example"><a href="#Example" class="headerlink" title="Example"></a>Example</h2><p>具体例程可以参考我的 security-plugin-spring-boot-starter 组件.</p>
-<p><a target="_blank" rel="noopener" href="https://github.com/xh-gotz9/security-plugin-spring-boot-starter/commit/99559dc56ddb6e3d978bcccd3acd98d90e5716fa">添加 Ant 权限表达式支持</a>.</p>
+<p><a target="_blank" rel="noopener" href="https://github.com/gotz9-studio/security-plugin-spring-boot-starter/commit/99559dc56ddb6e3d978bcccd3acd98d90e5716fa">添加 Ant 权限表达式支持</a>.</p>
 <ul>
 <li>采用了 <code>AnnotationMetadataExtractor</code> 的实现方式.</li>
 <li>SecurityMetadataSource 提供 <code>AntConfigAttribute</code></li>
 <li>voter 验证时需要访问目标拥有 <code>AntConfigAttribute</code> 类型的配置, 用户拥有 <code>AntGrantedAuthority</code> 类型的授权. (强制限定 <code>AntGrantedAuthority</code> 类型用户权限会导致认证逻辑变复杂, 可以考虑优化为 RoleVoter 的权限字符串前缀检测)</li>
 <li>使用了现成的 AntMatcher 比对逻辑, 将默认的路径分隔符 <code>/</code> 替换为 <code>:</code>. </li>
 </ul>
-<p><a target="_blank" rel="noopener" href="https://github.com/xh-gotz9/security-plugin-spring-boot-starter/commit/d75ec94c3f1e12f9a77a2c189cf43e773746cddb">添加功能接入配置</a></p>
+<p><a target="_blank" rel="noopener" href="https://github.com/gotz9-studio/security-plugin-spring-boot-starter/commit/d75ec94c3f1e12f9a77a2c189cf43e773746cddb">添加功能接入配置</a></p>
 <ul>
 <li>重写 <code>GlobalMethodSecurityConfiguration#customMethodSecurityMetadataSource</code> 方法, 提供自定义的 MetadataSource.</li>
 <li>重写 <code>GlobalMethodSecurityConfiguration#accessDecisionManager</code>, 自定义 voter 处理链.</li>
