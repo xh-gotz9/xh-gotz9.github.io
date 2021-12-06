@@ -1,0 +1,260 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  
+  <title>Rust 所有权 | Log Horizon</title>
+  <meta name="author" content="gotz9">
+  
+  <meta name="description" content="已经数不清是第几次在 dht_rs 项目上因为结构体设计, 所有权合理性问题上吃瘪了.
+思索再三, 决定把早期草草的所有权系统相关部分复习一遍.">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Rust 所有权"/>
+  <meta property="og:site_name" content="Log Horizon"/>
+
+  
+    <meta property="og:image" content=""/>
+  
+
+  <link rel="shortcut icon" href="/favicon.png">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  <!--[if lt IE 9]><script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script><![endif]-->
+  
+
+<meta name="generator" content="Hexo 5.2.0"></head>
+
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Log Horizon</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div>
+</header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article id="post-Rust-ownership" class="h-entry post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time class="dt-published" datetime="2021-12-06T04:37:01.000Z"><a href="/Rust-ownership/">2021-12-06</a></time>
+      
+      
+  
+    <h1 class="p-name title" itemprop="headline name">Rust 所有权</h1>
+  
+
+    </header>
+    <div class="e-content entry" itemprop="articleBody">
+      
+        <p>已经数不清是第几次在 dht_rs 项目上因为结构体设计, 所有权合理性问题上吃瘪了.</p>
+<p>思索再三, 决定把早期草草的所有权系统相关部分复习一遍.</p>
+<a id="more"></a>
+
+<h2 id="所有权"><a href="#所有权" class="headerlink" title="所有权"></a>所有权</h2><p>首先是最基本的所有权规则:</p>
+<ol>
+<li><p>Rust 中的每一个值都有一个被称为其 所有者 (owner) 的变量.</p>
+</li>
+<li><p>值在任一时刻有且只有一个所有者.</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">let s &#x3D; String::new(&quot;data&quot;);</span><br><span class="line">let t &#x3D; s;</span><br></pre></td></tr></table></figure>
+
+<p> 对于上面的示例代码, </p>
+</li>
+<li><p>当所有者 (变量) 离开作用域, 这个值将被丢弃.</p>
+</li>
+</ol>
+<h3 id="所有者"><a href="#所有者" class="headerlink" title="所有者"></a>所有者</h3><figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">let</span> x = <span class="number">5</span>;</span><br><span class="line"><span class="keyword">let</span> s = <span class="built_in">String</span>::new(<span class="string">&quot;data&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+<p>对于上面的示例代码, 变量 <code>x</code> 即是值 5 的所有者, s 是 <code>String::new</code> 创建的 String 对象的所有者.</p>
+<h3 id="作用域"><a href="#作用域" class="headerlink" title="作用域"></a>作用域</h3><p><code>作用域</code> 是在许多编程语言中都常见的规则.</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="keyword">let</span> s = <span class="built_in">String</span>::new(<span class="string">&quot;data&quot;</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在进入代码块, 声明 <code>s</code> 并初始化后, s 有效. 在离开代码块后, 作用域结束, s 不再有效.</p>
+<p>需要提一下, Rust 是同 C++ 的 RAII 模式, 数据在生命周期结束后有一个自动进行销毁的流程, 名为 <code>drop</code>.</p>
+<h3 id="Move"><a href="#Move" class="headerlink" title="Move"></a>Move</h3><p>有如下 <strong>无法通过编译</strong> 的示例代码:</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">let</span> s1 = <span class="built_in">String</span>::from(<span class="string">&quot;hello&quot;</span>);</span><br><span class="line"><span class="keyword">let</span> s2 = s1;</span><br><span class="line"></span><br><span class="line"><span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;, world!&quot;</span>, s1);</span><br></pre></td></tr></table></figure>
+
+<p>对于变量间的拷贝行为 <code>let y = x</code>, 通常理解都可以认为将 x 的值复制到了 y 上.</p>
+<p>但在这里, 需要提一下 Rust 的内存分配. 对于示例使用的 String 对象, 在示例中是在栈上分配了内存, 其栈上数据可以理解为包含了指向实际的字符数组 “data” 的指针和 内存/数据 的长度信息的结构体.</p>
+<p>这样对于 String 的变量间赋值, Rust 采用了浅拷贝的方式, 会创建出两个引用同一块字符数组内存的指针结构体. 一旦某一方对字符数据进行了修改, 进行了 <code>push_str</code> 之类的的操作, 都会导致另一个结构体数据不同步, 甚至可能出现一个结构体生命周期结束释放掉了字符数据内存, 而另一个结构体还保留的情况.</p>
+<p>所以, 对于示例中 <code>let s2 = s1</code> 的操作, Rust 编译器会使 s1 在操作后被认为失效. 在赋值操作后的代码将无法访问 <code>s1</code>, 也避免了出现变量 <code>s1</code> 在有效状态下离开作用域会自动进行清理的情况 (注: 实际上会不会是在编译处理过程中将两个变量指向一个内存块, 然后那个内存块会在两个变量都失效的时候才销毁…). 这一操作被称为 <code>move</code>.</p>
+<h3 id="Clone"><a href="#Clone" class="headerlink" title="Clone"></a>Clone</h3><p><code>Clone</code>, 克隆, 显然是复制相关的操作.</p>
+<p>刚才提到, <code>let s2 = s1</code> 是进行了浅拷贝, 只复制了栈上的内存指针和长度数据部分并使 <code>s1</code> 失效. 如果有必要进行深拷贝, 即可使用 <code>clone</code>:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">let s1 &#x3D; String::from(&quot;hello&quot;);</span><br><span class="line">let mut s2 &#x3D; s1.clone();</span><br><span class="line"></span><br><span class="line">s2.print_str(&quot;, world&quot;);</span><br><span class="line"></span><br><span class="line">println!(&quot;s1 &#x3D; &#123;&#125;, s2 &#x3D; &#123;&#125;&quot;, s1, s2);</span><br></pre></td></tr></table></figure>
+
+<p>上面的示例运行结果可以发现, s2 的数据变化并没有对 s1 产生影响. 因为 s2 是 clone 的结果, 是完全不相同的两组内存.</p>
+<h3 id="Copy"><a href="#Copy" class="headerlink" title="Copy"></a>Copy</h3><p>虽然对于 String 这样的对象, 变量间赋值会发生 move, 但对于数值类型, 情况似乎没有那么复杂.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">let s1 &#x3D; 1;</span><br><span class="line">let mut s2 &#x3D; s1;</span><br><span class="line"></span><br><span class="line">s2 +&#x3D; 2;</span><br><span class="line"></span><br><span class="line">println!(&quot;s1 &#x3D; &#123;&#125;, s2 &#x3D; &#123;&#125;&quot;, s1, s2);</span><br></pre></td></tr></table></figure>
+
+<p>这样的代码时可以执行的, <code>s1</code> 并没有失效.</p>
+<p>看起来, 数值类型有它的特殊性, 毕竟它们不存在深浅拷贝的区别. 而实际上这样的特性可以归为 Rust 的 trait <code>Copy</code>. 搜索 std 文档的数值类型会发现, 它们都实现了 <code>Copy</code>.</p>
+<p><code>Copy</code> 不需要覆盖任何行为, 它只会做简单的按位数据拷贝. 例如 String, 它只会按位拷贝 String 结构体本身, 而不考虑结构体内指针指向的字符串数据.</p>
+<p>关于 <code>Copy</code> 与 <code>Clone</code> 的详细, 见官方文档的 <a target="_blank" rel="noopener" href="https://doc.rust-lang.org/std/marker/trait.Copy.html">Copy</a>.</p>
+<h3 id="函数与移动"><a href="#函数与移动" class="headerlink" title="函数与移动"></a>函数与移动</h3><p>函数传参和返回数据也会发生 move, 数据会被移动到函数作用域内部的参数变量和接收函数返回值的变量上.</p>
+<h2 id="引用与借用"><a href="#引用与借用" class="headerlink" title="引用与借用"></a>引用与借用</h2><p>作用域内转移赋值会 move, 函数调用传参也要 move, 那变量会变得没法复用, 难以编写代码. 所以 Rust 还提供了 <code>引用 (references)</code> 来. 引用可以使用操作符 <code>&amp;</code> 来获取目标变量的引用, 对应的也有解引用操作符 <code>*</code>.</p>
+<p>引用理解起来其实相当简单, 它就是一个指向数据的指针. 对于 <code>&amp;String</code> 类型, 实际是 String 结构体的指针, 可能指向栈上 String, 也可能是已经移动到堆上内存的 String 的地址, 总之, 它指向的是一个 String 结构体. 通过指针解引用, 就可以直接操作外部的 String 本体了.</p>
+<p>但在此之上有一个限制, 即 Rust 的可变性声明. 一个变量如果未被声明 <code>mut</code>, 那它将是不可变的. 而对于引用来说, 它同样需要遵守这样的规则. 所以引用又被可变性系统划分为了 <code>可变引用</code> 与 <code>不可变引用</code>.</p>
+<h3 id="可变引用"><a href="#可变引用" class="headerlink" title="可变引用"></a>可变引用</h3><p>其实对于对象的方法调用, 也是使用了对象自身的引用的. 例如 <code>push_str</code> 的完整方法签名是 <code>String::push_str(&amp;mut self, string)</code>, 它需要使用到对象的可变引用, 但根据编译器的提示可以知道, s 是不可变引用, 无法变为可变引用.</p>
+<p>对于可变引用, 有限制: <code>在同一时间内只能有一个或对某一特定数据的可变引用</code>. 一个变量创建多个可变引用并保存到变量中是不被允许的. 这也是 Rust 比较棘手的点了, 毕竟其他语言的变量想变就变了.</p>
+<h3 id="悬垂引用"><a href="#悬垂引用" class="headerlink" title="悬垂引用"></a>悬垂引用</h3><p>由于引用指向的是现有的变量, 所以引用的生命周期肯定不能比变量的数据生命周期更长. 否则就会出现像 C/C++ 中的悬挂指针一样的问题了. 例如在函数作用域中创建了变量, 却把这个变量返回到了函数外部.</p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><ol>
+<li>在程序执行的任意时间点, 变量只能拥有最多一个可变引用, 或者多个不可变引用.</li>
+<li>要保证引用生命周期在变量生命周期内.</li>
+</ol>
+<h2 id="slice"><a href="#slice" class="headerlink" title="slice"></a>slice</h2><p>顾名思义, 切片, 它是对于一些数据类型深层数据的部分引用. 例如 String 的 slice, <code>&amp;str</code>, 它是对其内部字符数组的部分引用, 它的结构与 String 结构体相似, 记录了数据的起始位置和有效数据长度.</p>
+<p>显然它也应该符合引用的规则, 如果持有一个不可变的 slice, 原数据却会在被引用期间被修改, 不符合 Rust 限制数据竞争的设计.</p>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+  
+  <div class="tags">
+    <a href="/tags/ownership/">ownership</a>
+  </div>
+
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="搜索">
+    <input type="hidden" name="as_sitesearch" value="xh-gotz9.github.io">
+  </form>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">分类</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/CTF/BUUCTF/">BUUCTF</a><small>3</small></li>
+  
+    <li><a href="/categories/CTF/">CTF</a><small>3</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/Java/">Java</a><small>5</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/Rust/">Rust</a><small>1</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/">开发</a><small>7</small></li>
+  
+    <li><a href="/categories/%E6%9D%82%E6%96%87/">杂文</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">标签</h3>
+  <ul class="entry">
+  
+    <li><a href="/tags/B-%E6%A0%91/">B 树</a><small>1</small></li>
+  
+    <li><a href="/tags/BitTorrent/">BitTorrent</a><small>1</small></li>
+  
+    <li><a href="/tags/GC/">GC</a><small>1</small></li>
+  
+    <li><a href="/tags/JVM/">JVM</a><small>2</small></li>
+  
+    <li><a href="/tags/Java-NIO/">Java NIO</a><small>1</small></li>
+  
+    <li><a href="/tags/Kryo/">Kryo</a><small>1</small></li>
+  
+    <li><a href="/tags/Linux/">Linux</a><small>1</small></li>
+  
+    <li><a href="/tags/PHP/">PHP</a><small>1</small></li>
+  
+    <li><a href="/tags/Rust/">Rust</a><small>1</small></li>
+  
+    <li><a href="/tags/SQLI/">SQLI</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring/">Spring</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring-Boot/">Spring Boot</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring-Security/">Spring Security</a><small>2</small></li>
+  
+    <li><a href="/tags/Unserialize/">Unserialize</a><small>1</small></li>
+  
+    <li><a href="/tags/ownership/">ownership</a><small>1</small></li>
+  
+    <li><a href="/tags/protobuf/">protobuf</a><small>1</small></li>
+  
+    <li><a href="/tags/writeup/">writeup</a><small>3</small></li>
+  
+    <li><a href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/">多线程</a><small>3</small></li>
+  
+    <li><a href="/tags/%E5%BA%8F%E5%88%97%E5%8C%96/">序列化</a><small>1</small></li>
+  
+    <li><a href="/tags/%E6%99%BA%E8%83%BD%E6%8C%87%E9%92%88/">智能指针</a><small>1</small></li>
+  
+    <li><a href="/tags/%E7%BA%A2%E9%BB%91%E6%A0%91/">红黑树</a><small>1</small></li>
+  
+    <li><a href="/tags/%E7%BA%BF%E7%A8%8B%E6%B1%A0/">线程池</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2021 gotz9
+  
+</div>
+<div class="clearfix"></div></footer>
+  
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+<script src="/js/jquery.imagesloaded.min.js"></script>
+
+
+<script src="/js/gallery.js"></script>
+
+
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+<script>
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>
