@@ -66,10 +66,10 @@
 <a id="more"></a>
 
 <h2 id="SecurityMetadataSource"><a href="#SecurityMetadataSource" class="headerlink" title="SecurityMetadataSource"></a>SecurityMetadataSource</h2><p>首先需要看的是 <code>MethodSecurityMetadataSource</code> 的父接口 <code>SecurityMetadataSource</code>, 它被定义用于获取访问对象的元数据, 通常是一些权限限制之类的数据. </p>
-<p>Spring Security 的方法访问因为会使用 AOP 来对方法调用织入鉴权操作, 所以访问对象被包装成了 <code>org.aopalliance.intercept.MethodInvocation</code>. web 访问会通过 Spring Security提供的 Filter 鉴权, 访问对象则被包装成了 <code>org.springframework.security.web.FilterInvocation</code>.</p>
+<p>Spring Security 的方法访问因为会使用 AOP 来对方法调用织入鉴权操作, 所以访问对象被包装成了 <code>MethodInvocation</code> 对象. web 访问会通过 Spring Security提供的 Filter 鉴权, 访问对象则被包装成了 <code>FilterInvocation</code>.</p>
 <p>而根据访问目标提取到的配置, 则可以自由发挥. 例如 Method Security 相关的三种默认实现都是通过访问目标的方法的注解提取出相关的配置元数据, prePost 的 <code>PostAuthorize</code> 注解内配置 SpringEL 表达式, 在注解方法调用前的根据访问环境进行计算, 根据结果决定是否允许访问. 而 jsr250 提供的 <code>RolesAllowed</code> 注解则是配置了一组 role name, 允许拥有其中任意 role 的用户访问.</p>
 <p>最终, 提取到的元数据都会被转为实现 <code>ConfigAttribute</code> 的对象.</p>
-<h2 id="CustomizedMethodSecurityMetadataSource"><a href="#CustomizedMethodSecurityMetadataSource" class="headerlink" title="CustomizedMethodSecurityMetadataSource"></a>CustomizedMethodSecurityMetadataSource</h2><p>如果 Spring Security 提供的默认实现不能满足用户的需求, 也可以自行定制. 对于方法鉴权, 可以考虑重写配置类 <code>GlobalMethodSecurityConfiguration#customMethodSecurityMetadataSource</code> 方法或者直接重写 <code>GlobalMethodSecurityConfiguration#methodSecurityMetadataSource</code>. 两者都需要用户提供一个 <code>MethodSecurityMetadataSource</code> 实现.</p>
+<h2 id="CustomizedMethodSecurityMetadataSource"><a href="#CustomizedMethodSecurityMetadataSource" class="headerlink" title="CustomizedMethodSecurityMetadataSource"></a>CustomizedMethodSecurityMetadataSource</h2><p>如果 Spring Security 提供的默认实现不能满足用户的需求, 也可以自行定制. 对于方法鉴权, 可以继承配置基类 <code>GlobalMethodSecurityConfiguration</code>, 重写它的 <code>customMethodSecurityMetadataSource</code> 方法, 也可以直接重写更上层的 <code>methodSecurityMetadataSource</code> 方法. 两者都需要用户提供一个 <code>MethodSecurityMetadataSource</code> 对象.</p>
 <p>对于 <code>MethodSecurityMetadataSource</code> 接口, 有抽象类 <code>AbstractMethodSecurityMetadataSource</code>, 它实现了从 <code>SecurityMetadataSource#getAttributes(Object)</code> 调用到 <code>MethodSecurityMetadataSource#getAttributes(Method, Class&lt;?&gt;)</code> 调用的逻辑, 用户可以更专注于实现从 <code>Method</code> 和 <code>Class</code> 中提取元数据.</p>
 <p>由于访问目标可能是已经经过了 AOP 代理的类, 所以在 <code>AbstractMethodSecurityMetadataSource</code> 的基础上派生出了 <code>AbstractFallbackMethodSecurityMetadataSource</code> 用于从原始的调用目标上获取元数据.</p>
 <p>而在此基础上, 还有拥有更高一层抽象的 <code>SecuredAnnotationSecurityMetadataSource</code>, 它使用 <code>AnnotationMetadataExtractor</code>, 用于从注解中提取元数据. 用户可以仅实现 <code>AnnotationMetadataExtractor</code> 来提取注解中的元数据, 无需关心提取过程. 但其实现仅支持提取单个注解, 如果需要多种注解, 可以尝试对 <code>SecuredAnnotationSecurityMetadataSource</code> 进行扩展.</p>
@@ -196,7 +196,7 @@
   </div>
   <footer id="footer" class="inner"><div class="alignleft">
   
-  &copy; 2021 gotz9
+  &copy; 2022 gotz9
   
 </div>
 <div class="clearfix"></div></footer>
