@@ -1,0 +1,243 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  
+  <title>Thundering herd problem | Log Horizon</title>
+  <meta name="author" content="gotz9">
+  
+  <meta name="description" content="最近在进行 Nginx 源码解读, 在看到事件处理循环部分见到一段代码时, 见到了一段与个人印象中的事件处理代码不太一样的地方. 经过查阅资料, 了解到了 Thundering herd problem (“惊群” 问题).">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Thundering herd problem"/>
+  <meta property="og:site_name" content="Log Horizon"/>
+
+  
+    <meta property="og:image" content=""/>
+  
+
+  <link rel="shortcut icon" href="/favicon.png">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  <!--[if lt IE 9]><script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script><![endif]-->
+  
+
+<meta name="generator" content="Hexo 5.2.0"></head>
+
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Log Horizon</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div>
+</header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article id="post-thundering-herd-problem" class="h-entry post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time class="dt-published" datetime="2022-02-21T06:00:23.000Z"><a href="/thundering-herd-problem/">2022-02-21</a></time>
+      
+      
+  
+    <h1 class="p-name title" itemprop="headline name">Thundering herd problem</h1>
+  
+
+    </header>
+    <div class="e-content entry" itemprop="articleBody">
+      
+        <p>最近在进行 Nginx 源码解读, 在看到事件处理循环部分见到一段代码时, 见到了一段与个人印象中的事件处理代码不太一样的地方. 经过查阅资料, 了解到了 Thundering herd problem (“惊群” 问题).</p>
+<a id="more"></a>
+
+<h2 id="Nginx-代码"><a href="#Nginx-代码" class="headerlink" title="Nginx 代码"></a>Nginx 代码</h2><p>在事件循环内调用的 <code>ngx_process_events_and_timers</code> 函数中, 有如下代码:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (ngx_use_accept_mutex) &#123;</span><br><span class="line">    <span class="keyword">if</span> (ngx_accept_disabled &gt; <span class="number">0</span>) &#123;</span><br><span class="line">        ngx_accept_disabled--;</span><br><span class="line"></span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (ngx_accept_mutex_held) &#123;</span><br><span class="line">            flags |= NGX_POST_EVENTS;</span><br><span class="line"></span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (timer == NGX_TIMER_INFINITE</span><br><span class="line">                || timer &gt; ngx_accept_mutex_delay)</span><br><span class="line">            &#123;</span><br><span class="line">                timer = ngx_accept_mutex_delay;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>程序根据内存中的设置, 有可能会调用 <code>ngx_trylock_accept_mutex</code>. 这个函数的作用是尝试对程序的特定 mutex 加锁, 加锁成功后会通过 <code>ngx_enable_accept_events</code> 函数为程序的 server socket 开启监听 NGX_READ_EVENT 事件. 在多路复用模型中, server socket 的 READ 事件代表有新的 socket 连接, 需要调用 <code>accept</code> 处理连接请求.</p>
+<p>对于需要用到 mutex 加锁来决定是否处理 accept 这一行为, 我感到疑惑, 所以查阅了相关资料. 顺着各种资料的踪迹, 我找到了 “惊群” 问题的 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Thundering_herd_problem">wikipedia 页面</a>.</p>
+<blockquote>
+<p>In computer science, the thundering herd problem occurs when a large number of processes or threads waiting for an event are awoken when that event occurs, but only one process is able to handle the event. When the processes wake up, they will each try to handle the event, but only one will win. All processes will compete for resources, possibly freezing the computer, until the herd is calmed down again.</p>
+</blockquote>
+<p>简单地讲, “惊群” 问题发生在多个进程/线程等待事件的情况下. 当事件发生, 所有进程/线程都将被唤醒, 但只有一个进程/线程会进行事件处理, 其他进程/线程继续进入等待. 因此其他进程/线程的调度, 上下文切换造成的开销是完全的浪费.</p>
+<h2 id="Accept"><a href="#Accept" class="headerlink" title="Accept"></a>Accept</h2><p>Wikipedia 页面并没有具体指名到某个事物. 这里的等待事件, 在 socket 编程中, 指的是 <code>accept</code> 调用. 在早期服务器编程中, 通常采用多进程模式. 进程 <code>fork</code> 后共享同一个 server socket, 都对 socket 进行 <code>accept</code> 调用, 接收到外部连接的进程则会继续处理客户端连接.</p>
+<p>连接接入会唤醒所有对 socket 进行 <code>accept</code> 进入阻塞的进程/线程, 然后只有一个进程/线程会从 <code>accept</code> 调用获得连接, 其他则会得到 <code>EAGAIN</code> error 导致进程空转后回到阻塞状态. 例程见 <a href="[/static/thundering_herd_accept.c](https://github.com/xh-gotz9/Beginning-Linux-Programming-Note/blob/master/p15.Socket/code/thundering_herd_accept.c)">thundering_herd_accept.c</a>.</p>
+<p>为了解决这个问题, Linux 内核修改了 accept 的唤醒行为, 改为每个连接只唤醒一个进程. 参考文章 <a target="_blank" rel="noopener" href="https://xinyilearn.blog.csdn.net/article/details/104114521">Linux Kernel 2.6.9源码分析 – accept</a></p>
+<p>此后, accept 惊群问题得到了解决. 但随着多路复用技术的发展, 惊群问题又出现了.</p>
+<h2 id="多路复用"><a href="#多路复用" class="headerlink" title="多路复用"></a>多路复用</h2><p>以 select 为例, 根据 select-accept 模式, 编写例程. 创建 server socket, fork 后各自进行 select 调用监听同一个 server socket 的 read 事件.</p>
+<p>例程见 <a target="_blank" rel="noopener" href="https://github.com/xh-gotz9/Beginning-Linux-Programming-Note/blob/master/p15.Socket/code/thundering_herd_select.c">thundering_herd_select.c</a></p>
+<p>在启动例程后使用 telnet 向服务器发起连接, 服务器会有如下输出:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">pid[xxxx0] woken up</span><br><span class="line">pid[xxxx1] woken up</span><br><span class="line">pid [xxxx0] accepted connection</span><br><span class="line">error: Resource temporarily unavailable</span><br><span class="line">select waiting...</span><br><span class="line">empty accept</span><br><span class="line">select waiting...</span><br></pre></td></tr></table></figure>
+
+<p>当外部发起一个连接, 两个进程都会被唤醒, 然后仅有一个进程会从 accept 调用获取到 client 连接, 另一个进程的则会因 accept 没有连接空转.</p>
+<blockquote>
+<p>Tips. 如果 fd 没有设置 <code>O_NOBLOCK</code>, 空转的进程在 accept 处会因为没有连接而阻塞, 进而导致整个 select 循环阻塞, 无法处理其他 socket 的数据.</p>
+</blockquote>
+<h2 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h2><p>在 wikipedia 中提到, Linux Kernel 4.5 的 epoll 可以通过为 fd 设置 <code>EPOLLEXCLUSIVE</code> flag 来保证它的事件只会唤醒一个 epoll 对象, 例程见 <a href="">To be done</a>. Windows 的 IOCP 似乎也可以实现相似的行为, 暂略.</p>
+<p>而在一些没有提供此功能的系统调用上只能通过人为设计来缓解. 就如上文 Nginx 的思路, 仅一个进程可以监听 fd 的 accept 事件, 避免了进程间的竞争.</p>
+
+      
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/%E5%BC%80%E5%8F%91/">开发</a>, <a href="/categories/%E5%BC%80%E5%8F%91/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/">网络编程</a>
+  </div>
+
+        
+  
+  <div class="tags">
+    <a href="/tags/Socket/">Socket</a>
+  </div>
+
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="搜索">
+    <input type="hidden" name="as_sitesearch" value="xh-gotz9.github.io">
+  </form>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">分类</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/CTF/BUUCTF/">BUUCTF</a><small>3</small></li>
+  
+    <li><a href="/categories/CTF/">CTF</a><small>3</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/Java/">Java</a><small>8</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/Rust/">Rust</a><small>2</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/">开发</a><small>14</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/">数据结构</a><small>1</small></li>
+  
+    <li><a href="/categories/%E6%9D%82%E6%96%87/">杂文</a><small>1</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/%E7%BD%91%E7%BB%9C%E5%8D%8F%E8%AE%AE/">网络协议</a><small>1</small></li>
+  
+    <li><a href="/categories/%E5%BC%80%E5%8F%91/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/">网络编程</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">标签</h3>
+  <ul class="entry">
+  
+    <li><a href="/tags/B-%E6%A0%91/">B 树</a><small>1</small></li>
+  
+    <li><a href="/tags/BitTorrent/">BitTorrent</a><small>1</small></li>
+  
+    <li><a href="/tags/GC/">GC</a><small>1</small></li>
+  
+    <li><a href="/tags/JVM/">JVM</a><small>2</small></li>
+  
+    <li><a href="/tags/Java-NIO/">Java NIO</a><small>1</small></li>
+  
+    <li><a href="/tags/Kryo/">Kryo</a><small>1</small></li>
+  
+    <li><a href="/tags/Linux/">Linux</a><small>1</small></li>
+  
+    <li><a href="/tags/PHP/">PHP</a><small>1</small></li>
+  
+    <li><a href="/tags/Rust/">Rust</a><small>1</small></li>
+  
+    <li><a href="/tags/SQLI/">SQLI</a><small>2</small></li>
+  
+    <li><a href="/tags/Socket/">Socket</a><small>1</small></li>
+  
+    <li><a href="/tags/Spring/">Spring</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring-Boot/">Spring Boot</a><small>2</small></li>
+  
+    <li><a href="/tags/Spring-Security/">Spring Security</a><small>2</small></li>
+  
+    <li><a href="/tags/Unserialize/">Unserialize</a><small>1</small></li>
+  
+    <li><a href="/tags/ownership/">ownership</a><small>1</small></li>
+  
+    <li><a href="/tags/protobuf/">protobuf</a><small>1</small></li>
+  
+    <li><a href="/tags/writeup/">writeup</a><small>3</small></li>
+  
+    <li><a href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/">多线程</a><small>3</small></li>
+  
+    <li><a href="/tags/%E5%BA%8F%E5%88%97%E5%8C%96/">序列化</a><small>1</small></li>
+  
+    <li><a href="/tags/%E6%99%BA%E8%83%BD%E6%8C%87%E9%92%88/">智能指针</a><small>1</small></li>
+  
+    <li><a href="/tags/%E7%BA%A2%E9%BB%91%E6%A0%91/">红黑树</a><small>1</small></li>
+  
+    <li><a href="/tags/%E7%BA%BF%E7%A8%8B%E6%B1%A0/">线程池</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2022 gotz9
+  
+</div>
+<div class="clearfix"></div></footer>
+  
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+<script src="/js/jquery.imagesloaded.min.js"></script>
+
+
+<script src="/js/gallery.js"></script>
+
+
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+<script>
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>
