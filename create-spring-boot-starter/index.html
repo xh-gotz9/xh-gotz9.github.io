@@ -65,17 +65,23 @@
         <p>本篇的主要目的是记录编写一个自定义 Spring Security 模块的 spring boot starter 过程中遇到的问题.</p>
 <a id="more"></a>
 
-<p>本篇参考: </p>
+<p>本篇参考:</p>
 <ul>
 <li><a target="_blank" rel="noopener" href="https://www.baeldung.com/spring-boot-custom-starter">Creating a Custom Starter with Spring Boot</a>.</li>
 <li><a target="_blank" rel="noopener" href="https://docs.spring.io/spring-boot/docs/2.0.0.M3/reference/html/boot-features-developing-auto-configuration.html">Creating your own auto-configuration</a></li>
 </ul>
-<h2 id="core"><a href="#core" class="headerlink" title="core"></a>core</h2><p>首先是 <code>core</code> 模块, 它主要存放一些核心功能的类. 例如自定义的 Voter, AuthenticationProvider. 用 mybatis 项目类比的话, core 就是 mybatis 项目本身, 拥有核心的功能实现.</p>
-<h2 id="autoconfigure"><a href="#autoconfigure" class="headerlink" title="autoconfigure"></a>autoconfigure</h2><p>之后创建 <code>autoconfigure</code> 模块, 进行一些 Bean 的自动装配. mybatis 的自动装配主要是构建 <code>SqlSessionFactory</code>. 我的项目是对 Spring Security 功能的扩展, 所以可以利用 spring-boot-starter-security 的自动装配, 在其加载过程中接入 core 的 Voter/AuthenticationProvider 组件.</p>
-<pre><code>Tips. spring security web 装配过程
-1. `spring-boot-autoconfigure` 的 `spring.factories` 文件指定加载配置类 `SecurityAutoConfiguration`
-2. `SecurityAutoConfiguration` import `SpringBootWebSecurityConfiguration`
-3. `SpringBootWebSecurityConfiguration` 声明, 在装载了类 `WebSecurityConfigurerAdapter`, 缺少 `WebSecurityConfigurerAdapter` bean 的时候进行配置, 创建一个默认的 `DefaultConfigurerAdapter` 配置 bean.</code></pre><p>这样 WebSecurityConfigurerAdapter 就完成了默认的装配. 如果需要接入自动装配流程, 那需要在装配默认配置类之前装配一个 WebSecurityConfigurerAdapter 类型的 bean.</p>
+<h2 id="core"><a href="#core" class="headerlink" title="core"></a>core</h2><p>首先是 <code>core</code> 模块, 它主要存放一些核心功能的类. 例如自定义的 Voter, AuthenticationProvider. 用 Mybatis 项目类比的话, core 就是 Mybatis 项目本身, 拥有核心的功能实现.</p>
+<h2 id="autoconfigure"><a href="#autoconfigure" class="headerlink" title="autoconfigure"></a>autoconfigure</h2><p>之后创建 <code>autoconfigure</code> 模块, 进行一些 Bean 的自动装配. Mybatis 的自动装配主要是构建 <code>SqlSessionFactory</code>. 我的项目是对 Spring Security 功能的扩展, 所以可以利用 spring-boot-starter-security 的自动装配, 在其加载过程中接入 core 的 Voter/AuthenticationProvider 组件.</p>
+<p>spring security web 装配过程:</p>
+<ol>
+<li><p><code>spring-boot-autoconfigure</code> 的 <code>spring.factories</code> 文件指定加载配置类 <code>SecurityAutoConfiguration</code></p>
+</li>
+<li><p><code>SecurityAutoConfiguration</code> import <code>SpringBootWebSecurityConfiguration</code></p>
+</li>
+<li><p><code>SpringBootWebSecurityConfiguration</code> 声明, 在装载了类 <code>WebSecurityConfigurerAdapter</code>, 缺少 <code>WebSecurityConfigurerAdapter</code> bean 的时候进行配置, 创建一个默认的 <code>DefaultConfigurerAdapter</code> 配置 bean.</p>
+</li>
+</ol>
+<p>这样 WebSecurityConfigurerAdapter 就完成了默认的装配. 如果需要接入自动装配流程, 那需要在装配默认配置类之前装配一个 WebSecurityConfigurerAdapter 类型的 bean.</p>
 <p>因为打算强关联一些逻辑, 创建了一个继承 <code>WebSecurityConfigurerAdapter</code> 的抽象类 <code>WebSecurityPluginConfiguration</code>, 在其中添加了一些抽象方法需要用户来实现, 需要用户自行实现一些逻辑.</p>
 <p>再者准备做成插件形式, 所以采用了注解的方式进行开关, 注解的设计参考了 <code>EnableWebSecurity</code>. EnableWebSecurity 主要是应用了 <code>Import</code> 注解, 其参数又分为普通配置类和 <code>ImportSelector</code> 实现类两种情况. 配置类参数为静态引入, 而 <code>ImportSelector</code> 则可以执行代码, 计算得出需要 import 的配置类.</p>
 <p>装配参考了 <code>SpringBootWebSecurityConfiguration.DefaultConfigurerAdapter</code>, 创建一个默认的 PluginConfiguration 实现, 通过 <code>WebSecurityPluginProperties</code> 来对进行配置. 利用 <code>ConditionalOnXxx</code> 等注解可以做到选择性装配 bean. 例如 <code>SpringBootWebSecurityConfiguration</code> 就指定了如下配置:</p>
